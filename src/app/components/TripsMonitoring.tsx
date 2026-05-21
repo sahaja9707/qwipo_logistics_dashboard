@@ -1,18 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import KPICard from './KPICard';
-import TruckRoutesMap from './TruckRoutesMap';
 import type { Role } from '../App';
-import { Truck, MapPin, AlertTriangle, DollarSign, Clock, TrendingUp, TrendingDown, Zap, Leaf, Timer, Route, ChevronDown } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell, ReferenceLine, ReferenceArea } from 'recharts';
+import { getFilteredDrivers, getSnapshotForFilters, type GlobalFilters } from '../data/filterData';
+import { Truck, MapPin, AlertTriangle, Award, DollarSign, Clock, TrendingDown, ChevronDown, ChevronRight } from 'lucide-react';
+import { LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
 
-const varianceData = [
-  { route: 'Route A', planned: 120, actual: 134, variance: 14  },
-  { route: 'Route B', planned: 95,  actual: 91,  variance: -4  },
-  { route: 'Route C', planned: 140, actual: 152, variance: 12  },
-  { route: 'Route D', planned: 110, actual: 108, variance: -2  },
-  { route: 'Route E', planned: 85,  actual: 99,  variance: 14  },
-  { route: 'Route F', planned: 130, actual: 127, variance: -3  },
-];
+const runtimeSpark = [3.8, 4.1, 3.6, 4.4, 3.9, 3.5, 3.2, 3.2].map((v, i) => ({ i, v }));
 
 const tripsTrend = [
   { date: 'May 10', trips: 48, completed: 44 },
@@ -51,59 +44,52 @@ const severityConfig: Record<string, { color: string; bg: string; border: string
   low:    { color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
 };
 
-const utilization = [
-  { name: 'Vehicle Utilization', value: 84, color: '#6366F1', target: 90 },
-  { name: 'Time Utilization', value: 76, color: '#0891B2', target: 85 },
-  { name: 'Delivery Point Util.', value: 91, color: '#10B981', target: 90 },
-];
-
-// Trips lifecycle
+// Trips lifecycle — 4 types
 const lifecycle = [
-  { label: 'Completed', value: 92,  color: '#10B981', dot: '🟢' },
-  { label: 'Delayed',   value: 11,  color: '#F59E0B', dot: '🟡' },
-  { label: 'Cancelled', value: 4,   color: '#94A3B8', dot: '⚫' },
+  { label: 'Planned',     value: 18,  color: '#6366F1', dot: '🔵' },
+  { label: 'In Progress', value: 14,  color: '#F59E0B', dot: '🟡' },
+  { label: 'Completed',   value: 92,  color: '#10B981', dot: '🟢' },
+  { label: 'Cancelled',   value: 4,   color: '#94A3B8', dot: '⚫' },
 ];
 const totalTrips = lifecycle.reduce((s, x) => s + x.value, 0);
 
-// Operational efficiency sparklines
-const runtimeSpark  = [3.8, 4.1, 3.6, 4.4, 3.9, 3.5, 3.2, 3.2].map((v, i) => ({ i, v }));
-const distanceSpark = [11200, 12400, 11800, 13600, 14100, 13800, 14500, 14820].map((v, i) => ({ i, v }));
-const effSpark      = [91.2, 90.8, 92.1, 91.4, 93.0, 93.5, 93.2, 93.7].map((v, i) => ({ i, v }));
 
 const ANOMALY_TYPE_OPTIONS = ['All Types', 'Runtime Exceeded', 'Route Deviation', 'SIM Card Changed', 'Underutilization Alert', 'Delivery Failure', 'Delay Alert'];
 const ANOMALY_SEV_OPTIONS  = ['All Severity', 'high', 'medium', 'low'];
+type TripAnomaly = typeof anomalies[0];
 
 function GaugeChart({ value, color, target }: { value: number; color: string; target: number }) {
-  const radius = 42;
+  const radius = 32;
   const circumference = Math.PI * radius;
   const offset = circumference * (1 - value / 100);
   const isOnTarget = value >= target;
   return (
-    <svg width="100" height="58" viewBox="0 0 100 58">
-      <path d={`M 8 50 A ${radius} ${radius} 0 0 1 92 50`} fill="none" stroke="#F1F5F9" strokeWidth="10" strokeLinecap="round" />
-      <path d={`M 8 50 A ${radius} ${radius} 0 0 1 92 50`} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+    <svg width="80" height="48" viewBox="0 0 80 48">
+      <path d={`M 8 40 A ${radius} ${radius} 0 0 1 72 40`} fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="round" />
+      <path d={`M 8 40 A ${radius} ${radius} 0 0 1 72 40`} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
         strokeDasharray={`${circumference}`} strokeDashoffset={`${offset}`} />
-      <text x="50" y="48" textAnchor="middle" fill="#1E293B" fontSize="15" fontWeight="700">{value}%</text>
-      <text x="50" y="57" textAnchor="middle" fill={isOnTarget ? '#059669' : '#D97706'} fontSize="8">{isOnTarget ? '✓ On target' : `Target: ${target}%`}</text>
+      <text x="40" y="38" textAnchor="middle" fill="#1E293B" fontSize="13" fontWeight="700">{value}%</text>
+      <text x="40" y="46" textAnchor="middle" fill={isOnTarget ? '#059669' : '#D97706'} fontSize="7">{isOnTarget ? '✓ On target' : `Target: ${target}%`}</text>
     </svg>
   );
 }
 
-// Custom dot for runtime trend — color by over/under target
-function RuntimeDot(props: { cx?: number; cy?: number; payload?: { avgRuntime: number; target: number } }) {
-  const { cx = 0, cy = 0, payload } = props;
-  if (!payload) return null;
-  const over = payload.avgRuntime > payload.target;
-  return <circle cx={cx} cy={cy} r={4} fill={over ? '#EF4444' : '#10B981'} stroke="white" strokeWidth={1.5} />;
-}
+export default function TripsMonitoring({ role, filters }: { role: Role; filters: GlobalFilters }) {
+  const showDeliveryCost = role !== 'admin_support' && role !== 'branch_manager';
 
-export default function TripsMonitoring({ role }: { role: Role }) {
-  const showDeliveryCost = role !== 'admin_support';
+  const snap = useMemo(() => getSnapshotForFilters(filters), [filters]);
+
+  const utilizationMetrics = useMemo(() => [
+    { name: 'Vehicle Utilization', value: snap.vehicleUtil, color: '#6366F1', target: 90, key: 'vehicleUtil' },
+    { name: 'Time Utilization', value: snap.timeUtil, color: '#0891B2', target: 85, key: 'timeUtil' },
+    { name: 'Delivery Point Util.', value: snap.dpUtil, color: '#10B981', target: 90, key: 'dpUtil' },
+  ], [snap]);
 
   const [anomalyTypeFilter, setAnomalyTypeFilter] = useState('All Types');
   const [anomalySevFilter,  setAnomalySevFilter]  = useState('All Severity');
   const [typeDropOpen, setTypeDropOpen] = useState(false);
   const [sevDropOpen,  setSevDropOpen]  = useState(false);
+  const [selectedAnomalyId, setSelectedAnomalyId] = useState<number | null>(null);
 
   const filteredAnomalies = anomalies.filter(a => {
     const typeOk = anomalyTypeFilter === 'All Types'    || a.type     === anomalyTypeFilter;
@@ -111,58 +97,30 @@ export default function TripsMonitoring({ role }: { role: Role }) {
     return typeOk && sevOk;
   });
 
+  const drivers = useMemo(() => getFilteredDrivers(filters), [filters]);
+
   return (
     <div className="space-y-4">
-      {/* ── Trips Lifecycle Horizontal Stack ─────────────────────────── */}
-      <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-slate-800 text-sm font-semibold">Trips Lifecycle</div>
-            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Today's trip status breakdown — {totalTrips} total trips dispatched</div>
-          </div>
-          <span className="px-3 py-1 rounded-full font-bold" style={{ background: '#EEF2FF', color: '#6366F1', fontSize: '13px' }}>
-            {totalTrips} trips
-          </span>
-        </div>
-
-        {/* Stacked bar */}
-        <div className="flex rounded-lg overflow-hidden mb-4" style={{ height: 28 }}>
-          {lifecycle.map(seg => (
-            <div
-              key={seg.label}
-              className="flex items-center justify-center transition-all"
-              style={{
-                width: `${(seg.value / totalTrips) * 100}%`,
-                background: seg.color,
-                minWidth: seg.value > 0 ? 8 : 0,
-              }}
-              title={`${seg.label}: ${seg.value} (${((seg.value / totalTrips) * 100).toFixed(0)}%)`}
-            />
-          ))}
-        </div>
-
-        {/* Legend row */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          {lifecycle.map(seg => (
-            <div
-              key={seg.label}
-              className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{ background: `${seg.color}10`, border: `1px solid ${seg.color}30` }}
-            >
-              <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: seg.color }} />
-              <div>
-                <div className="font-bold" style={{ fontSize: '18px', color: seg.color, lineHeight: 1 }}>{seg.value}</div>
-                <div className="text-slate-500 mt-0.5" style={{ fontSize: '11px' }}>{seg.label}</div>
-                <div style={{ fontSize: '10px', color: seg.color, opacity: 0.7 }}>
-                  {((seg.value / totalTrips) * 100).toFixed(0)}% of total
-                </div>
-              </div>
+      {/* ── 4 Trip Type Cards ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {lifecycle.map(seg => (
+          <div key={seg.label} className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0', borderTop: `3px solid ${seg.color}` }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-slate-500 font-medium" style={{ fontSize: '11px' }}>{seg.label}</span>
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: seg.color }} />
             </div>
-          ))}
-        </div>
+            <div className="font-extrabold text-slate-800" style={{ fontSize: '2rem', lineHeight: 1 }}>{seg.value}</div>
+            <div style={{ fontSize: '10px', color: seg.color, marginTop: 4 }}>
+              {((seg.value / totalTrips) * 100).toFixed(0)}% of {totalTrips} total
+            </div>
+            <div className="w-full rounded-full mt-3" style={{ height: 4, background: '#F1F5F9', overflow: 'hidden' }}>
+              <div className="h-full rounded-full" style={{ width: `${(seg.value / totalTrips) * 100}%`, background: seg.color }} />
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* ── Operational Efficiency Panel ─────────────────────────────── */}
+      {/* ── Operational Efficiency Panel ────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Avg Runtime */}
         <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col" style={{ border: '1px solid #E2E8F0', borderLeftWidth: 3, borderLeftColor: '#8B5CF6' }}>
@@ -192,341 +150,114 @@ export default function TripsMonitoring({ role }: { role: Role }) {
           </div>
         </div>
 
-        {/* Live Distance */}
-        <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col" style={{ border: '1px solid #E2E8F0', borderLeftWidth: 3, borderLeftColor: '#0891B2' }}>
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg" style={{ background: '#0891B215' }}>
-                <MapPin size={14} style={{ color: '#0891B2' }} />
-              </div>
-              <span className="text-slate-500" style={{ fontSize: '11px' }}>Live Distance</span>
+        {/* Avg Route Distance — compact card */}
+        <div className="lg:col-span-2 bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0', borderLeftWidth: 3, borderLeftColor: '#0891B2' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-slate-800 text-sm font-semibold">Avg Route Distance</div>
+              <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Manual routing vs digital optimization — per trip</div>
             </div>
-            <span className="flex items-center gap-0.5 font-medium" style={{ fontSize: '11px', color: '#10B981' }}>
-              <TrendingUp size={11} />4.2%
-            </span>
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+              <TrendingDown size={11} style={{ color: '#059669' }} />
+              <span className="font-bold" style={{ fontSize: '11px', color: '#059669' }}>−17.6% saved</span>
+            </div>
           </div>
-          <div className="font-bold text-slate-800 mt-1 mb-0.5" style={{ fontSize: '1.6rem', lineHeight: 1 }}>14,820 <span style={{ fontSize: '13px', fontWeight: 500, color: '#94A3B8' }}>km</span></div>
-          <div className="text-slate-400 mb-3" style={{ fontSize: '10px' }}>Actual travelled today</div>
-          <div className="flex-1" style={{ minHeight: 44 }}>
-            <ResponsiveContainer width="100%" height={44}>
-              <AreaChart id="trips-distance-spark" data={distanceSpark} margin={{ top: 2, bottom: 0, left: 0, right: 0 }}>
-                <Area type="monotone" dataKey="v" stroke="#0891B2" strokeWidth={1.5} fill="#0891B2" fillOpacity={0.12} dot={false} isAnimationActive={false} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="p-3 rounded-xl text-center" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+              <div className="text-slate-400 font-semibold uppercase mb-1" style={{ fontSize: '9px' }}>Manual Routing</div>
+              <div className="font-extrabold line-through" style={{ fontSize: '1.6rem', color: '#94A3B8', textDecorationColor: '#EF4444' }}>148</div>
+              <div className="text-slate-400" style={{ fontSize: '10px' }}>km / trip</div>
+            </div>
+            <div className="p-3 rounded-xl text-center" style={{ background: '#F0F9FF', border: '1px solid #BAE6FD' }}>
+              <div className="text-slate-400 font-semibold uppercase mb-1" style={{ fontSize: '9px' }}>Digital Routing</div>
+              <div className="font-extrabold" style={{ fontSize: '1.6rem', color: '#0891B2' }}>122</div>
+              <div className="text-slate-500" style={{ fontSize: '10px' }}>km / trip</div>
+            </div>
           </div>
-          <div className="flex justify-between mt-1" style={{ fontSize: '9px', color: '#CBD5E1' }}>
-            <span>May 10</span><span>May 17</span>
+          <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl" style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #F0F9FF 100%)', border: '1px solid #A7F3D0' }}>
+            <TrendingDown size={14} style={{ color: '#059669' }} />
+            <span className="font-bold text-emerald-700" style={{ fontSize: '13px' }}>−26 km saved per trip</span>
+            <span className="text-slate-400" style={{ fontSize: '11px' }}>· reduces fuel + SLA breach risk</span>
           </div>
         </div>
 
-        {/* Route Efficiency */}
-        <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col" style={{ border: '1px solid #E2E8F0', borderLeftWidth: 3, borderLeftColor: '#059669' }}>
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg" style={{ background: '#05966915' }}>
-                <Truck size={14} style={{ color: '#059669' }} />
-              </div>
-              <span className="text-slate-500" style={{ fontSize: '11px' }}>Route Efficiency</span>
-            </div>
-            <span className="flex items-center gap-0.5 font-medium" style={{ fontSize: '11px', color: '#10B981' }}>
-              <TrendingUp size={11} />1.3%
-            </span>
-          </div>
-          <div className="font-bold text-slate-800 mt-1 mb-0.5" style={{ fontSize: '1.6rem', lineHeight: 1 }}>93.7 <span style={{ fontSize: '13px', fontWeight: 500, color: '#94A3B8' }}>%</span></div>
-          <div className="text-slate-400 mb-3" style={{ fontSize: '10px' }}>Route optimisation score</div>
-          <div className="flex-1" style={{ minHeight: 44 }}>
-            <ResponsiveContainer width="100%" height={44}>
-              <AreaChart id="trips-eff-spark" data={effSpark} margin={{ top: 2, bottom: 0, left: 0, right: 0 }}>
-                <Area type="monotone" dataKey="v" stroke="#059669" strokeWidth={1.5} fill="#059669" fillOpacity={0.12} dot={false} isAnimationActive={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex justify-between mt-1" style={{ fontSize: '9px', color: '#CBD5E1' }}>
-            <span>May 10</span><span>May 17</span>
-          </div>
-        </div>
       </div>
 
-      {/* ── Remaining standalone KPIs ─────────────────────────────────── */}
-      <div className={`grid gap-3 ${showDeliveryCost ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {/* ── Remaining KPIs ───────────────────────────────────────── */}
+      <div className={`grid gap-3 ${showDeliveryCost ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {showDeliveryCost && (
           <KPICard title="Delivery Cost" value="₹3.8L" icon={DollarSign} trend={{ value: 2.1, isPositive: false }} subtitle="Today" accentColor="#F59E0B" />
         )}
         <KPICard title="Total Delivery Stops" value="4,218" icon={MapPin} trend={{ value: 4.8, isPositive: true }} subtitle="Stops covered today" accentColor="#8B5CF6" />
-        <KPICard title="Anomalies" value="6" icon={AlertTriangle} trend={{ value: 1, isPositive: false }} subtitle="Needs review" accentColor="#EF4444" />
       </div>
 
-      {/* ── Interactive Route Map ─────────────────────────────────────── */}
-      <TruckRoutesMap />
+      {/* Gauge Charts — Utilization Overview — compact inline strip */}
+      <div className="flex">
+        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0', maxWidth: 460, width: '100%' }}>
+          <div className="text-slate-800 text-sm font-semibold mb-0.5">Utilization Overview</div>
+          <div className="text-slate-400 mb-3" style={{ fontSize: '11px' }}>Vehicle, time, and delivery point efficiency gauges</div>
+          <div className="grid grid-cols-3 gap-2">
+            {utilizationMetrics.map(u => (
+              <div key={u.name} className="flex flex-col items-center gap-0.5">
+                <GaugeChart value={u.value} color={u.color} target={u.target} />
+                <span className="text-slate-600 text-center font-medium" style={{ fontSize: '11px' }}>{u.name}</span>
+                {u.key === 'vehicleUtil' && (
+                  <span className="text-slate-500 font-bold" style={{ fontSize: '10.5px', marginTop: '1px' }}>
+                    {snap.avgVehicles} vehicles
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-      {/* ── Digital vs Manual Routing Savings ────────────────────────── */}
+      {/* Trips Trend (Full Width) */}
       <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="text-slate-800 text-sm font-semibold">Digital Routing vs Manual Distribution</div>
-            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>
-              Time &amp; cost savings from AI-optimised routing against traditional manual planning — May 2026
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: '#ECFDF5', border: '1px solid #6EE7B7' }}>
-            <Zap size={12} style={{ color: '#059669' }} />
-            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>Qwipo AI Active</span>
-          </div>
-        </div>
-
-        {/* Comparison grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[
-            {
-              icon: Timer,
-              label: 'Planning Time',
-              manual: '3–4 hrs/day',
-              digital: '8 min/day',
-              saving: '95% faster',
-              color: '#6366F1',
-              bg: '#EEF2FF',
-            },
-            {
-              icon: Route,
-              label: 'Avg Route Distance',
-              manual: '148 km/trip',
-              digital: '122 km/trip',
-              saving: '−26 km saved',
-              color: '#0891B2',
-              bg: '#F0F9FF',
-            },
-            {
-              icon: DollarSign,
-              label: 'Fuel Cost / Day',
-              manual: '₹5.4L/day',
-              digital: '₹3.8L/day',
-              saving: '₹1.6L saved',
-              color: '#059669',
-              bg: '#ECFDF5',
-            },
-            {
-              icon: Leaf,
-              label: 'CO₂ Emissions',
-              manual: '2,840 kg/day',
-              digital: '2,180 kg/day',
-              saving: '−23% emissions',
-              color: '#16A34A',
-              bg: '#F0FDF4',
-            },
-          ].map(item => (
-            <div
-              key={item.label}
-              className="rounded-xl p-4 flex flex-col gap-2"
-              style={{ background: item.bg, border: `1px solid ${item.color}20` }}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <div className="p-1.5 rounded-lg bg-white">
-                  <item.icon size={13} style={{ color: item.color }} />
-                </div>
-                <span className="text-slate-500 font-medium" style={{ fontSize: '11px' }}>{item.label}</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400" style={{ fontSize: '10px' }}>Manual</span>
-                  <span className="text-slate-600 font-medium line-through" style={{ fontSize: '11px' }}>{item.manual}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400" style={{ fontSize: '10px' }}>Digital</span>
-                  <span className="font-bold" style={{ fontSize: '11px', color: item.color }}>{item.digital}</span>
-                </div>
-              </div>
-              <div
-                className="mt-auto text-center rounded-lg py-1 font-semibold"
-                style={{ background: item.color, color: '#fff', fontSize: '10px' }}
-              >
-                {item.saving}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Monthly savings bar comparison */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <div className="text-slate-600 font-medium mb-3" style={{ fontSize: '12px' }}>Monthly Cost Comparison (₹L)</div>
-            <div className="space-y-3">
-              {[
-                { label: 'Fuel & Vehicle Op.', manual: 162, digital: 114, unit: '₹L' },
-                { label: 'Driver Overtime',    manual: 38,  digital: 12,  unit: '₹L' },
-                { label: 'Missed Deliveries',  manual: 24,  digital: 6,   unit: '₹L' },
-                { label: 'Admin / Planning',   manual: 18,  digital: 3,   unit: '₹L' },
-              ].map(row => {
-                const maxVal = 180;
-                return (
-                  <div key={row.label}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-500" style={{ fontSize: '10px' }}>{row.label}</span>
-                      <span style={{ fontSize: '10px', color: '#059669', fontWeight: 600 }}>
-                        −₹{row.manual - row.digital}L saved
-                      </span>
-                    </div>
-                    <div className="relative" style={{ height: 16 }}>
-                      {/* Manual bar (background) */}
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-r-sm"
-                        style={{ width: `${(row.manual / maxVal) * 100}%`, background: '#FEE2E2' }}
-                      />
-                      {/* Digital bar (foreground) */}
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-r-sm"
-                        style={{ width: `${(row.digital / maxVal) * 100}%`, background: '#6366F1' }}
-                      />
-                      <div className="absolute inset-y-0 flex items-center" style={{ left: `${(row.manual / maxVal) * 100 + 1}%` }}>
-                        <span className="text-slate-400" style={{ fontSize: '9px' }}>₹{row.manual}L</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-4 mt-3" style={{ fontSize: '10px', color: '#94A3B8' }}>
-              <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-2 rounded-sm" style={{ background: '#FEE2E2' }} /> Manual</span>
-              <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-2 rounded-sm" style={{ background: '#6366F1' }} /> Digital (Qwipo)</span>
-            </div>
-          </div>
-
-          {/* Monthly summary scorecard */}
-          <div className="rounded-xl p-5" style={{ background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 60%, #4338CA 100%)' }}>
-            <div className="text-white font-semibold mb-1" style={{ fontSize: '13px' }}>Monthly Savings Summary</div>
-            <div className="mb-4" style={{ fontSize: '11px', color: '#A5B4FC' }}>Cumulative gains from Qwipo digital routing</div>
-            <div className="space-y-3">
-              {[
-                { label: 'Total Cost Saved',       value: '₹68.4L',   sub: 'vs manual planning baseline' },
-                { label: 'Hours Saved (Planning)', value: '1,890 hrs', sub: '63 trips/day × 30 days' },
-                { label: 'KM Reduction',           value: '48,360 km', sub: '26 km/trip avg saving' },
-                { label: 'On-Time Delivery Rate',  value: '+18.4%',    sub: 'from 74.3% → 92.7%' },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div>
-                    <div className="text-white font-semibold" style={{ fontSize: '13px' }}>{item.value}</div>
-                    <div style={{ fontSize: '10px', color: '#A5B4FC' }}>{item.label}</div>
-                  </div>
-                  <div className="text-right" style={{ fontSize: '10px', color: '#818CF8' }}>{item.sub}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 text-center rounded-lg py-2" style={{ background: 'rgba(99,102,241,0.4)', fontSize: '11px', color: '#E0E7FF' }}>
-              ROI: <span className="font-bold text-white">3.2× return</span> vs Qwipo subscription cost
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Gauge Charts — Utilization Overview */}
-      <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="text-slate-800 text-sm font-semibold mb-0.5">Utilization Overview</div>
-        <div className="text-slate-400 mb-5" style={{ fontSize: '11px' }}>Vehicle, time, and delivery point efficiency gauges</div>
-        <div className="grid grid-cols-3 gap-4">
-          {utilization.map(u => (
-            <div key={u.name} className="flex flex-col items-center gap-1">
-              <GaugeChart value={u.value} color={u.color} target={u.target} />
-              <span className="text-slate-600 text-center" style={{ fontSize: '11px' }}>{u.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Planned vs Live Distance Bar Chart */}
-        <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-slate-800 text-sm font-semibold">Planned vs Live Distance</div>
-              <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Actual − Planned km · red = over, green = under</div>
-            </div>
-            <div className="flex items-center gap-3" style={{ fontSize: '11px', color: '#94A3B8' }}>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded inline-block" style={{ background: '#EF4444' }} /> Over</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded inline-block" style={{ background: '#10B981' }} /> Under</span>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart id="trips-variance-bar" data={varianceData} barCategoryGap="35%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-              <XAxis dataKey="route" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} unit=" km" />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 11 }}
-                formatter={(val: number, _name: string, props: { payload?: { planned?: number; actual?: number } }) => [
-                  `${val > 0 ? '+' : ''}${val} km (Planned: ${props.payload?.planned}, Actual: ${props.payload?.actual})`,
-                  'Variance',
-                ]}
-              />
-              <ReferenceLine y={0} stroke="#CBD5E1" strokeWidth={1.5} />
-              <Bar dataKey="variance" radius={[3, 3, 0, 0]} name="Variance (km)" isAnimationActive={false}>
-                {varianceData.map((entry) => (
-                  <Cell key={`var-cell-${entry.route}`} fill={entry.variance > 0 ? '#EF4444' : '#10B981'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Trips Trend */}
-        <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-          <div className="text-slate-800 text-sm font-semibold mb-0.5">Trips Trend</div>
-          <div className="text-slate-400 mb-4" style={{ fontSize: '11px' }}>Daily dispatched vs completed</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart id="trips-trend-line" data={tripsTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[30, 70]} />
-              <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 11 }} />
-              <Line type="monotone" dataKey="trips" stroke="#CBD5E1" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Dispatched" isAnimationActive={false} />
-              <Line type="monotone" dataKey="completed" stroke="#6366F1" strokeWidth={2} dot={{ fill: '#6366F1', r: 3 }} name="Completed" isAnimationActive={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <div className="text-slate-800 text-sm font-semibold mb-0.5">Trips Trend</div>
+        <div className="text-slate-400 mb-4" style={{ fontSize: '11px' }}>Daily dispatched vs completed</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart id="trips-trend-line" data={tripsTrend}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[30, 70]} />
+            <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 11 }} />
+            <Line type="monotone" dataKey="trips" stroke="#CBD5E1" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Dispatched" isAnimationActive={false} />
+            <Line type="monotone" dataKey="completed" stroke="#6366F1" strokeWidth={2} dot={{ fill: '#6366F1', r: 3 }} name="Completed" isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Runtime Trend — Enhanced visualization */}
       <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <div className="text-slate-800 text-sm font-semibold">Runtime Trend</div>
             <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Average trip runtime vs 4h target — last 8 days · green = on target, red = exceeded</div>
           </div>
-          <div className="flex items-center gap-3" style={{ fontSize: '11px', color: '#94A3B8' }}>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#10B981' }} /> Under target
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#EF4444' }} /> Over target
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-6 border-t-2 border-dashed" style={{ borderColor: '#94A3B8' }} /> Target (4h)
-            </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(() => {
+              const overCount  = runtimeTrend.filter(d => d.avgRuntime > d.target).length;
+              const underCount = runtimeTrend.length - overCount;
+              const avgRuntime = (runtimeTrend.reduce((s, d) => s + d.avgRuntime, 0) / runtimeTrend.length).toFixed(2);
+              return (
+                <>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+                    {overCount} day{overCount !== 1 ? 's' : ''} over
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#ECFDF5', color: '#059669' }}>
+                    {underCount} day{underCount !== 1 ? 's' : ''} under
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#EEF2FF', color: '#6366F1' }}>
+                    Avg: {avgRuntime}h
+                  </span>
+                </>
+              );
+            })()}
           </div>
         </div>
 
-        {/* Summary badges */}
-        <div className="flex items-center gap-2 mb-4">
-          {(() => {
-            const overCount  = runtimeTrend.filter(d => d.avgRuntime > d.target).length;
-            const underCount = runtimeTrend.length - overCount;
-            const avgRuntime = (runtimeTrend.reduce((s, d) => s + d.avgRuntime, 0) / runtimeTrend.length).toFixed(2);
-            return (
-              <>
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#FEF2F2', color: '#DC2626' }}>
-                  {overCount} day{overCount !== 1 ? 's' : ''} over target
-                </span>
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#ECFDF5', color: '#059669' }}>
-                  {underCount} day{underCount !== 1 ? 's' : ''} under target
-                </span>
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#EEF2FF', color: '#6366F1' }}>
-                  Avg: {avgRuntime}h
-                </span>
-              </>
-            );
-          })()}
-        </div>
-
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer width="100%" height={180}>
           <ComposedChart id="trips-runtime-area" data={runtimeTrend} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id="runtimeGradientGreen" x1="0" y1="0" x2="0" y2="1">
@@ -570,43 +301,19 @@ export default function TripsMonitoring({ role }: { role: Role }) {
               name="Target (4h)"
               isAnimationActive={false}
             />
-            {/* Avg runtime line with color-coded dots */}
+            {/* Avg runtime line without dots */}
             <Line
               type="monotone"
               dataKey="avgRuntime"
               stroke="#8B5CF6"
               strokeWidth={2.5}
-              dot={<RuntimeDot />}
+              dot={false}
               activeDot={{ r: 6, strokeWidth: 2 }}
               name="Avg Runtime"
               isAnimationActive={false}
             />
           </ComposedChart>
         </ResponsiveContainer>
-
-        {/* Per-day mini summary */}
-        <div className="grid mt-4 pt-3" style={{ borderTop: '1px solid #F1F5F9', gridTemplateColumns: `repeat(${runtimeTrend.length}, 1fr)`, gap: 4 }}>
-          {runtimeTrend.map(d => {
-            const over = d.avgRuntime > d.target;
-            return (
-              <div key={d.date} className="flex flex-col items-center gap-0.5">
-                <span
-                  className="font-bold"
-                  style={{ fontSize: '11px', color: over ? '#DC2626' : '#059669' }}
-                >
-                  {d.avgRuntime}h
-                </span>
-                <div
-                  className="w-5 h-5 rounded-full flex items-center justify-center"
-                  style={{ background: over ? '#FEF2F2' : '#ECFDF5' }}
-                >
-                  <span style={{ fontSize: '9px' }}>{over ? '↑' : '✓'}</span>
-                </div>
-                <span style={{ fontSize: '9px', color: '#94A3B8' }}>{d.date.replace('May ', '')}</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {/* Anomaly feed — with dropdown filters */}
@@ -698,31 +405,147 @@ export default function TripsMonitoring({ role }: { role: Role }) {
         <div style={{ borderBottom: '1px solid #F1F5F9' }}>
           {filteredAnomalies.map((a, i) => {
             const sc = severityConfig[a.severity];
+            const isOpen = selectedAnomalyId === a.id;
             return (
-              <div
-                key={a.id}
-                className="flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors"
-                style={{ borderTop: i === 0 ? 'none' : '1px solid #F8FAFC' }}
-              >
-                <span
-                  className="px-2 py-0.5 rounded font-medium flex-shrink-0 mt-0.5"
-                  style={{ background: sc.bg, color: sc.color, fontSize: '10px', border: `1px solid ${sc.border}` }}
+              <div key={a.id} style={{ borderTop: i === 0 ? 'none' : '1px solid #F8FAFC' }}>
+                <button
+                  onClick={() => setSelectedAnomalyId(isOpen ? null : a.id)}
+                  className="w-full flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors text-left"
                 >
-                  {a.severity.toUpperCase()}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-0.5">
-                    <span className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{a.type}</span>
-                    <span className="text-slate-400 flex-shrink-0" style={{ fontSize: '11px' }}>{a.time}</span>
+                  <span
+                    className="px-2 py-0.5 rounded font-medium flex-shrink-0 mt-0.5"
+                    style={{ background: sc.bg, color: sc.color, fontSize: '10px', border: `1px solid ${sc.border}` }}
+                  >
+                    {a.severity.toUpperCase()}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-0.5">
+                      <span className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{a.type}</span>
+                      <span className="text-slate-400 flex-shrink-0" style={{ fontSize: '11px' }}>{a.time}</span>
+                    </div>
+                    <div className="text-slate-500 mb-0.5" style={{ fontSize: '11px' }}>{a.detail}</div>
+                    <div className="flex items-center gap-2 text-slate-400" style={{ fontSize: '10px' }}>
+                      <span>{a.trip}</span><span>·</span><span>{a.vehicle}</span><span>·</span><span>{a.driver}</span>
+                    </div>
                   </div>
-                  <div className="text-slate-500 mb-0.5" style={{ fontSize: '11px' }}>{a.detail}</div>
-                  <div className="flex items-center gap-2 text-slate-400" style={{ fontSize: '10px' }}>
-                    <span>{a.trip}</span><span>·</span><span>{a.vehicle}</span><span>·</span><span>{a.driver}</span>
+                  <ChevronRight size={14} className="mt-1 text-slate-400 transition-transform" style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
+                </button>
+                {isOpen && (
+                  <div className="px-4 pb-4">
+                    <TripAnomalyExpandedDetails anomaly={a} />
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Driver Performance Analytics Table */}
+      <div className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+        <div className="flex items-center justify-between p-5 pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
+          <div>
+            <div className="text-slate-800 text-sm font-semibold">Driver Performance Analytics</div>
+            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Overview of trips, distance covered, and delivery success metrics</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: '#FEF2F2', fontSize: '11px', color: '#DC2626', border: '1px solid #FECACA' }}>
+              <AlertTriangle size={11} />
+              <span>{drivers.filter(d => d.returnPct > 12).length} high-risk</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: '#FFFBEB', fontSize: '11px', color: '#D97706' }}>
+              <Award size={12} /> Top performers
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full" style={{ fontSize: '12px' }}>
+            <thead>
+              <tr style={{ background: '#F8FAFC' }}>
+                {['#', 'Driver', 'Vehicle', 'Trips', 'Distance (km)', 'Attempts', 'Returns', 'Success Rate', 'Runtime'].map(h => (
+                  <th key={h} className={`px-3 py-3 text-slate-400 font-medium ${['#', 'Driver', 'Vehicle'].includes(h) ? 'text-left' : 'text-right'}`} style={{ fontSize: '10px' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...drivers].sort((a, b) => a.rank - b.rank).map(d => {
+                const isHighRisk = d.returnPct > 12;
+                return (
+                  <tr
+                    key={d.rank}
+                    style={{
+                      borderTop: '1px solid #F1F5F9',
+                      background: isHighRisk ? '#FFF5F5' : 'transparent',
+                    }}
+                    className="hover:brightness-[0.97] transition-all"
+                  >
+                    <td className="px-3 py-2.5">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold" style={{ background: d.rank <= 3 ? '#FEF3C7' : '#F1F5F9', color: d.rank <= 3 ? '#D97706' : '#64748B', fontSize: '10px' }}>
+                        {d.rank}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-700 font-medium">{d.name}</span>
+                        {isHighRisk && (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0" style={{ background: '#FEE2E2', color: '#DC2626', fontSize: '9px', border: '1px solid #FECACA' }}>
+                            <AlertTriangle size={8} /> HIGH RISK
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-400" style={{ fontFamily: 'monospace', fontSize: '10px' }}>{d.vehicle}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-700 font-medium">{d.trips}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">{d.distanceKm} km</td>
+                    <td className="px-3 py-2.5 text-right text-slate-700">{d.attempts}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-500">{d.returns}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className="font-semibold" style={{ color: d.successRate >= 95 ? '#059669' : d.successRate >= 90 ? '#D97706' : '#DC2626' }}>
+                        {d.successRate}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-slate-500">{d.runtime}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: '#F8FAFC', borderTop: '2px solid #E2E8F0' }}>
+                <td colSpan={3} className="px-3 py-2.5">
+                  <span className="text-slate-500 font-bold" style={{ fontSize: '11px' }}>
+                    Summary: {drivers.reduce((s, d) => s + d.trips, 0)} trips · {drivers.reduce((s, d) => s + d.distanceKm, 0).toLocaleString()} km
+                  </span>
+                </td>
+                <td colSpan={6} className="px-3 py-2.5 text-right">
+                  <span className="text-slate-400" style={{ fontSize: '10px' }}>
+                    Total Trips: {drivers.reduce((s, d) => s + d.trips, 0)} · Total Distance: {drivers.reduce((s, d) => s + d.distanceKm, 0).toLocaleString()} km
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TripAnomalyExpandedDetails({ anomaly }: { anomaly: TripAnomaly }) {
+  const sc = severityConfig[anomaly.severity];
+  return (
+    <div className="rounded-lg p-3" style={{ background: '#F8FAFC', border: `1px solid ${sc.border}` }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="rounded-md p-2.5" style={{ background: '#fff', border: '1px solid #E2E8F0' }}>
+          <div className="text-slate-400 uppercase font-semibold" style={{ fontSize: '10px' }}>Operational Context</div>
+          <p className="text-slate-600 mt-1" style={{ fontSize: '11px' }}>
+            {anomaly.trip} reported {anomaly.type.toLowerCase()} with impact on route adherence and SLA compliance.
+          </p>
+        </div>
+        <div className="rounded-md p-2.5" style={{ background: '#fff', border: '1px solid #E2E8F0' }}>
+          <div className="text-slate-400 uppercase font-semibold" style={{ fontSize: '10px' }}>Recommended Action</div>
+          <p className="text-slate-600 mt-1" style={{ fontSize: '11px' }}>
+            Validate telemetry and driver notes, then escalate to branch operations if issue persists beyond 30 minutes.
+          </p>
         </div>
       </div>
     </div>

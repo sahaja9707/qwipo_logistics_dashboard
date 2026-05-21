@@ -1,7 +1,6 @@
 import {
   LayoutDashboard, Building2, ShoppingCart, Truck,
-  Bell, FileText, Users, Settings, ChevronRight,
-  AlertTriangle, LogOut
+  FileText, Settings, ChevronRight, LogOut
 } from 'lucide-react';
 import type { Role } from '../App';
 import qwipoLogo from '../../imports/image-4.png';
@@ -25,23 +24,21 @@ const menuGroups = [
     label: 'Overview',
     items: [
       // Dashboard only shown for roles whose default landing IS the dashboard
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['company_admin'] as Role[] },
+      { id: 'dashboard', label: 'Operations Command', icon: LayoutDashboard, roles: ['super_admin', 'company_admin'] as Role[] },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { id: 'orders',       label: 'Orders',             icon: ShoppingCart,  roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: null },
-      { id: 'distribution', label: 'Distribution',       icon: Building2,     roles: ['super_admin', 'company_admin', 'distributor_admin'] as Role[], badge: null },
-      { id: 'trips',        label: 'Trips',              icon: Truck,         roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: null },
-      { id: 'alerts',       label: 'Alerts & Exceptions',icon: AlertTriangle, roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: 12 },
+      { id: 'orders',       label: 'Orders',       icon: ShoppingCart, roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: null },
+      { id: 'distribution', label: 'Distribution',  icon: Building2,    roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: null },
+      { id: 'trips',        label: 'Trips',         icon: Truck,        roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: null },
     ],
   },
   {
     label: 'Management',
     items: [
       { id: 'reports', label: 'Reports',         icon: FileText, roles: ['super_admin', 'company_admin', 'distributor_admin', 'admin_support'] as Role[], badge: null },
-      { id: 'users',   label: 'User Management', icon: Users,    roles: ['super_admin', 'company_admin'] as Role[], badge: null },
     ],
   },
 ];

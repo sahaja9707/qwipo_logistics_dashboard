@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Role } from '../App';
-import { Bell, Clock, Filter, ChevronDown } from 'lucide-react';
+import { Bell, Clock, Filter, ChevronDown, ChevronRight, AlertOctagon, MapPin, TrendingDown, Zap, AlertTriangle, TrendingUp, X } from 'lucide-react';
 
 
 const allAlerts = [
@@ -23,6 +23,85 @@ const severityConfig: Record<string, { color: string; bg: string; dot: string; b
 
 const categories = ['All', 'delivery', 'vehicle', 'trip', 'fleet'];
 const severities  = ['All', 'critical', 'high', 'medium', 'low'];
+type AlertItem = typeof allAlerts[0];
+
+function ExpandedAnomalyPanel({ alert, onClose }: { alert: AlertItem; onClose: () => void }) {
+  const sc = severityConfig[alert.severity];
+  const estimatedLoss = alert.severity === 'critical' ? '₹2.1L' : alert.severity === 'high' ? '₹84K' : alert.severity === 'medium' ? '₹31K' : '₹9K';
+  const source = alert.category === 'delivery' ? 'Delivery Aging Monitor' : alert.category === 'vehicle' ? 'Vehicle Telemetry' : alert.category === 'trip' ? 'Trip Monitor' : 'Fleet Utilization Engine';
+  const recommendedAction = alert.actionable
+    ? 'Escalate to operations lead, assign owner, and execute corrective action within SLA.'
+    : 'Monitor for one more cycle and escalate only if recurrence persists.';
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: `1.5px solid ${sc.border}` }}>
+      <div className="flex items-center justify-between px-5 py-3" style={{ background: sc.bg, borderBottom: `1px solid ${sc.border}` }}>
+        <div className="flex items-center gap-2.5">
+          <AlertOctagon size={15} style={{ color: sc.color }} />
+          <span className="font-semibold" style={{ fontSize: '13px', color: sc.color }}>{alert.title}</span>
+          <span className="px-2 py-0.5 rounded-full text-xs font-bold capitalize" style={{ background: sc.color, color: '#fff' }}>{alert.severity}</span>
+        </div>
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/60 text-slate-400 transition-colors"><X size={15} /></button>
+      </div>
+
+      <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { icon: MapPin, label: 'Distributor', value: alert.branch },
+              { icon: Clock, label: 'Detected', value: alert.time },
+              { icon: TrendingDown, label: 'Est. Financial Loss', value: estimatedLoss },
+              { icon: Zap, label: 'Source', value: source },
+            ].map(item => (
+              <div key={item.label} className="rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <item.icon size={11} style={{ color: '#94A3B8' }} />
+                  <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</span>
+                </div>
+                <div className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <AlertTriangle size={11} style={{ color: '#D97706' }} />
+              <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operational Impact</span>
+            </div>
+            <p className="text-slate-600 leading-relaxed" style={{ fontSize: '12px' }}>{alert.detail}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <TrendingUp size={11} style={{ color: '#6366F1' }} />
+              <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Details & Root Cause</span>
+            </div>
+            <p className="text-slate-600 leading-relaxed" style={{ fontSize: '12px' }}>{alert.detail}</p>
+          </div>
+
+          <div className="rounded-lg p-3" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <ChevronRight size={11} style={{ color: '#059669' }} />
+              <span style={{ fontSize: '10px', color: '#059669', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recommended Action</span>
+            </div>
+            <p className="text-emerald-800 leading-relaxed" style={{ fontSize: '12px' }}>{recommendedAction}</p>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button className="flex-1 py-2 rounded-lg font-medium text-white transition-colors" style={{ background: '#DC2626', fontSize: '12px' }}>
+              Escalate
+            </button>
+            <button className="flex-1 py-2 rounded-lg font-medium transition-colors" style={{ background: '#F1F5F9', color: '#475569', fontSize: '12px' }}>
+              Mark Resolved
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Alert type options for the dropdown
 const alertTypeOptions = ['All Types', ...Array.from(new Set(allAlerts.map(a => a.type)))];
@@ -37,6 +116,7 @@ export default function AlertsExceptions({ role: _role }: { role: Role }) {
   const [catDropOpen,  setCatDropOpen]  = useState(false);
   const [sevDropOpen,  setSevDropOpen]  = useState(false);
   const [typeDropOpen, setTypeDropOpen] = useState(false);
+  const [expandedAlertId, setExpandedAlertId] = useState<number | null>(null);
 
   const filtered = allAlerts.filter(a => {
     const catOk  = activeCat  === 'All'       || a.category === activeCat;
@@ -212,12 +292,14 @@ export default function AlertsExceptions({ role: _role }: { role: Role }) {
 
         {filtered.map((alert, i) => {
           const sc = severityConfig[alert.severity];
+          const isOpen = expandedAlertId === alert.id;
           return (
             <div
               key={alert.id}
               className="p-5 hover:bg-slate-50 transition-colors"
               style={{ borderTop: i === 0 ? 'none' : '1px solid #F8FAFC' }}
             >
+              <button className="w-full text-left" onClick={() => setExpandedAlertId(isOpen ? null : alert.id)}>
               <div className="flex items-start gap-4">
                 {/* Timeline dot */}
                 <div className="flex flex-col items-center pt-1 flex-shrink-0" style={{ width: 16 }}>
@@ -241,9 +323,9 @@ export default function AlertsExceptions({ role: _role }: { role: Role }) {
                       </div>
                       <div className="text-slate-700 font-medium" style={{ fontSize: '13px' }}>{alert.title}</div>
                     </div>
-                    <div className="flex items-center gap-1 text-slate-400 flex-shrink-0" style={{ fontSize: '11px' }}>
-                      <Clock size={10} />
-                      {alert.time}
+                    <div className="flex items-center gap-2 text-slate-400 flex-shrink-0" style={{ fontSize: '11px' }}>
+                      <span className="flex items-center gap-1"><Clock size={10} />{alert.time}</span>
+                      <ChevronRight size={14} className="transition-transform" style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
                     </div>
                   </div>
 
@@ -265,8 +347,14 @@ export default function AlertsExceptions({ role: _role }: { role: Role }) {
                       </button>
                     </div>
                   )}
-                </div>
+                </div> 
               </div>
+              </button>
+              {isOpen && (
+                <div className="mt-2 ml-5">
+                  <ExpandedAnomalyPanel alert={alert} onClose={() => setExpandedAlertId(null)} />
+                </div>
+              )}
             </div>
           );
         })}

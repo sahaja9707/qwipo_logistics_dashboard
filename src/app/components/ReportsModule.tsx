@@ -266,7 +266,7 @@ const reports = [
 ];
 
 // All 19 columns from the export spec
-const ALL_FIELDS = [
+export const ALL_FIELDS = [
   'Trip Date', 'Number of Trips', 'Number of Vehicles', 'Total Trip (Km)',
   'Delivered', 'Returned', 'Returned : Cancelled', 'Returned : Delivery Retry',
   'Total Delivery Attempt', 'Net Sale Value', 'Return Value', 'Total Net Sale',
@@ -429,6 +429,23 @@ function DownloadModal({ report, onClose }: DownloadModalProps) {
   );
 }
 
+// ─── Scheduled Reports Data ───────────────────────────────────────────────────
+
+const scheduledReports = [
+  { id: 1, name: 'Daily Operations Summary',  frequency: 'Daily',   nextRun: 'Today 11:30 PM', format: 'PDF',   lastRun: '20 May 2026', status: 'Active',  reportRef: reports[0] },
+  { id: 2, name: 'Driver Performance Report', frequency: 'Weekly',  nextRun: 'Mon 9:00 AM',    format: 'Excel', lastRun: '18 May 2026', status: 'Active',  reportRef: reports[1] },
+  { id: 3, name: 'Orders Summary Report',     frequency: 'Daily',   nextRun: 'Today 11:30 PM', format: 'PDF',   lastRun: '20 May 2026', status: 'Active',  reportRef: reports[2] },
+  { id: 4, name: 'Return Rate Analysis',      frequency: 'Weekly',  nextRun: 'Mon 9:00 AM',    format: 'Excel', lastRun: '18 May 2026', status: 'Active',  reportRef: reports[3] },
+  { id: 5, name: 'Fleet Utilization Monthly', frequency: 'Monthly', nextRun: '1 Jun 2026',     format: 'PDF',   lastRun: '1 May 2026',  status: 'Active',  reportRef: reports[4] },
+  { id: 6, name: 'Customer Delivery Report',  frequency: 'Weekly',  nextRun: 'Mon 9:00 AM',    format: 'Excel', lastRun: '18 May 2026', status: 'Paused',  reportRef: reports[5] },
+];
+
+const freqColors: Record<string, { color: string; bg: string }> = {
+  Daily:   { color: '#6366F1', bg: '#EEF2FF' },
+  Weekly:  { color: '#0891B2', bg: '#F0F9FF' },
+  Monthly: { color: '#059669', bg: '#ECFDF5' },
+};
+
 export default function ReportsModule({ role }: { role: Role }) {
   const [activeReport, setActiveReport] = useState<Report | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -488,77 +505,97 @@ export default function ReportsModule({ role }: { role: Role }) {
         </div>
       </div>
 
-      {/* Reports list */}
+      {/* Scheduled Reports Table */}
       <div className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
         <div className="flex items-center justify-between p-5 pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
           <div>
-            <div className="text-slate-800 text-sm font-semibold">Recent Reports</div>
-            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Click download to preview fields and set export format</div>
+            <div className="text-slate-800 text-sm font-semibold">Scheduled Reports</div>
+            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Automated reports running on schedule</div>
           </div>
-          <div className="flex items-center gap-1.5 text-slate-400" style={{ fontSize: '11px' }}>
-            <Filter size={12} />
-            <span>Filter</span>
-          </div>
+          <span
+            className="px-2.5 py-1 rounded-full font-semibold"
+            style={{ background: '#ECFDF5', color: '#059669', fontSize: '11px' }}
+          >
+            {scheduledReports.filter(r => r.status === 'Active').length} active
+          </span>
         </div>
-        <div>
-          {reports.map((r, i) => {
-            const tc = typeColors[r.type];
-            const Icon = r.icon;
-            return (
-              <div
-                key={r.id}
-                className="flex items-start gap-4 p-4 hover:bg-slate-50 transition-colors"
-                style={{ borderTop: i === 0 ? 'none' : '1px solid #F8FAFC' }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: tc.bg }}>
-                  <Icon size={17} style={{ color: tc.color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-slate-700 font-medium" style={{ fontSize: '13px' }}>{r.name}</span>
-                    <span className="px-1.5 py-0.5 rounded font-medium" style={{ background: tc.bg, color: tc.color, fontSize: '10px' }}>{r.type}</span>
-                  </div>
-                  <div className="text-slate-400 mb-2" style={{ fontSize: '11px' }}>Generated: {r.generated} · {r.size} · {r.fields.length} fields</div>
-                  {/* Field preview chips */}
-                  <div className="flex flex-wrap gap-1">
-                    {r.fields.slice(0, 6).map(f => (
-                      <span key={f} className="px-1.5 py-0.5 rounded" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>{f}</span>
-                    ))}
-                    {r.fields.length > 6 && (
-                      <span className="px-1.5 py-0.5 rounded" style={{ background: '#F1F5F9', color: '#94A3B8', fontSize: '10px' }}>
-                        +{r.fields.length - 6} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500" style={{ fontSize: '11px' }}>{r.format}</span>
-                  <button
-                    onClick={() => setActiveReport(r)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors hover:bg-indigo-50 font-medium"
-                    style={{ color: '#6366F1', fontSize: '11px', border: '1px solid #E0E7FF' }}
-                  >
-                    <Download size={12} /> Download
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Reports This Month', value: '24', color: '#6366F1' },
-          { label: 'Scheduled Auto-Reports', value: '4', color: '#0891B2' },
-          { label: 'Total Downloads', value: '142', color: '#059669' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0', borderLeftWidth: '3px', borderLeftColor: s.color }}>
-            <div className="text-slate-800 font-bold" style={{ fontSize: '1.4rem' }}>{s.value}</div>
-            <div className="text-slate-500 mt-0.5" style={{ fontSize: '11px' }}>{s.label}</div>
-          </div>
-        ))}
+        <div className="overflow-x-auto">
+          <table className="w-full" style={{ minWidth: 720 }}>
+            <thead>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                {['Report Name', 'Frequency', 'Next Run', 'Format', 'Last Run', 'Status', 'Actions'].map(col => (
+                  <th
+                    key={col}
+                    className="text-left px-4 py-3 text-slate-500 font-semibold"
+                    style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+                  >
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {scheduledReports.map((r, idx) => {
+                const fc = freqColors[r.frequency] ?? { color: '#6366F1', bg: '#EEF2FF' };
+                const isActive = r.status === 'Active';
+                return (
+                  <tr
+                    key={r.id}
+                    style={{
+                      background: idx % 2 === 0 ? '#fff' : '#FAFAFA',
+                      borderBottom: '1px solid #F1F5F9',
+                    }}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{r.name}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="px-2 py-0.5 rounded font-medium"
+                        style={{ fontSize: '10px', background: fc.bg, color: fc.color }}
+                      >
+                        {r.frequency}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600" style={{ fontSize: '12px' }}>{r.nextRun}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="px-2 py-0.5 rounded bg-slate-100 text-slate-500"
+                        style={{ fontSize: '11px' }}
+                      >
+                        {r.format}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500" style={{ fontSize: '11px' }}>{r.lastRun}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="px-2.5 py-1 rounded-full font-semibold"
+                        style={{
+                          fontSize: '10px',
+                          background: isActive ? '#ECFDF5' : '#FEF3C7',
+                          color: isActive ? '#059669' : '#D97706',
+                          border: `1px solid ${isActive ? '#A7F3D0' : '#FDE68A'}`,
+                        }}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => setActiveReport(r.reportRef)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors hover:bg-indigo-50 font-medium"
+                        style={{ color: '#6366F1', fontSize: '11px', border: '1px solid #E0E7FF' }}
+                      >
+                        <Download size={12} /> Download
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

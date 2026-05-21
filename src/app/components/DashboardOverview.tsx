@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import KPICard from './KPICard';
 import type { Role } from '../App';
 import type { GlobalFilters } from '../data/filterData';
@@ -6,177 +6,186 @@ import {
   getSnapshotForFilters, getWeeklyTrend, getCategoryData, getFilteredDistributorPerf,
 } from '../data/filterData';
 import {
-  ShoppingCart, Truck, CheckCircle, AlertTriangle, Users, Package,
-  DollarSign, MapPin, BarChart2, Zap, Clock,
+  ShoppingCart, CheckCircle, AlertTriangle, Users, Package,
+  DollarSign, BarChart2, Clock, Building2, Building
 } from 'lucide-react';
 import {
-  ComposedChart, Bar, Area, PieChart, Pie, Cell, Line,
+  ComposedChart, Bar, PieChart, Pie, Cell, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
-// ─── Shared static data ────────────────────────────────────────────────────────
+// ─── Shared Gauge component ───────────────────────────────────────────────────
+function GaugeChart({ value, color, target }: { value: number; color: string; target: number }) {
+  const radius = 42;
+  const circumference = Math.PI * radius;
+  const offset = circumference * (1 - value / 100);
+  const isOnTarget = value >= target;
+  return (
+    <svg width="100" height="58" viewBox="0 0 100 58">
+      <path d={`M 8 50 A ${radius} ${radius} 0 0 1 92 50`} fill="none" stroke="#F1F5F9" strokeWidth="10" strokeLinecap="round" />
+      <path d={`M 8 50 A ${radius} ${radius} 0 0 1 92 50`} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+        strokeDasharray={`${circumference}`} strokeDashoffset={`${offset}`} />
+      <text x="50" y="48" textAnchor="middle" fill="#1E293B" fontSize="15" fontWeight="700">{value}%</text>
+      <text x="50" y="57" textAnchor="middle" fill={isOnTarget ? '#059669' : '#D97706'} fontSize="8">
+        {isOnTarget ? '✓ On target' : `Target: ${target}%`}
+      </text>
+    </svg>
+  );
+}
 
-const STATIC_ORDER_TREND = [
-  { day: 'Mon', orders: 245, delivered: 220, returned: 15, price: 2.8 },
-  { day: 'Tue', orders: 312, delivered: 290, returned: 18, price: 3.6 },
-  { day: 'Wed', orders: 280, delivered: 265, returned: 12, price: 3.2 },
-  { day: 'Thu', orders: 390, delivered: 370, returned: 22, price: 4.5 },
-  { day: 'Fri', orders: 420, delivered: 395, returned: 19, price: 4.9 },
-  { day: 'Sat', orders: 350, delivered: 330, returned: 14, price: 4.0 },
-  { day: 'Sun', orders: 285, delivered: 260, returned: 11, price: 3.3 },
+const UTIL_METRICS = [
+  { name: 'Vehicle Utilization',  color: '#6366F1', target: 90, key: 'vehicleUtil' as const },
+  { name: 'Time Utilization',     color: '#0891B2', target: 85, key: 'timeUtil'    as const },
+  { name: 'Delivery Point Util.', color: '#10B981', target: 90, key: 'dpUtil'      as const },
 ];
 
-const recentAlerts = [
-  { id: 1, type: 'Delayed Delivery',  severity: 'high',   message: '14 orders past D2 threshold in Andheri — 3 approaching D4+', time: '8 min ago' },
-  { id: 2, type: 'High Return Rate',  severity: 'medium', message: 'Malad branch return rate at 18.1% — threshold is 12%',         time: '23 min ago' },
-  { id: 3, type: 'SIM Card Changed',  severity: 'high',   message: 'Tamper alert on TS-09-T-3312 mid-trip — halted for review',    time: '3h 05m ago' },
-  { id: 4, type: 'Runtime Exceeded',  severity: 'medium', message: 'TRP-3847 exceeded planned 6h window by 2.4 hrs',               time: '1h 23m ago' },
-];
 
-// ─── Super Admin Dashboard ────────────────────────────────────────────────────
+interface SuperAdminProps {
+  filters: GlobalFilters;
+}
 
-function SuperAdminDashboard({ filters }: { filters: GlobalFilters }) {
-  const snap = useMemo(() => getSnapshotForFilters(filters), [filters]);
+const companyDistributors: Record<string, string[]> = {
+  ITC: [
+    'DIS-HYD-004',
+    'DIS-KRN-001',
+    'DIS-MUM-012',
+    'DIS-BAN-007',
+    'DIS-DEL-009',
+    'DIS-PUN-015',
+    'DIS-AHM-006',
+    'DIS-CHN-003',
+    'DIS-HYD-021',
+    'DIS-MUM-033',
+    'DIS-BAN-044',
+    'DIS-DEL-052',
+    'DIS-PUN-060',
+    'DIS-CHN-071',
+    'DIS-AHM-082',
+    'DIS-NAG-090',
+    'DIS-KOL-106',
+  ],
+  'HUL (Hindustan Unilever)': ['DIS-HUL-MUM-01', 'DIS-HUL-BAN-02', 'DIS-HUL-DEL-03'],
+};
 
-  const deliveryStatus = useMemo(() => [
-    { name: 'Delivered',     value: snap.fulfilledOrders,                    color: '#10B981' },
-    { name: 'In Planning',   value: snap.pendingOrders,                      color: '#6366F1' },
-    { name: 'Returned',      value: snap.returnedOrders,                     color: '#F59E0B' },
-    { name: 'Partial Return',value: Math.round(snap.returnedOrders * 0.41),  color: '#FB923C' },
-    { name: 'Cancelled',     value: snap.cancelledOrders,                    color: '#EF4444' },
-  ], [snap]);
+function SuperAdminDashboard({ filters }: SuperAdminProps) {
+  const [activeDistributorListCompany, setActiveDistributorListCompany] = useState<string | null>(null);
 
-  const totalDeliveries = deliveryStatus.reduce((s, x) => s + x.value, 0);
-
-  const agingCounts = useMemo(() => {
-    const total = snap.totalOrders;
-    return [
-      { label: 'D0',  value: Math.round(total * 0.406), color: '#10B981', bg: '#ECFDF5' },
-      { label: 'D1',  value: Math.round(total * 0.194), color: '#6366F1', bg: '#EEF2FF' },
-      { label: 'D2',  value: Math.round(total * 0.098), color: '#F59E0B', bg: '#FFFBEB' },
-      { label: 'D3',  value: Math.round(total * 0.028), color: '#FB923C', bg: '#FFF7ED' },
-      { label: 'D4+', value: Math.round(total * 0.014), color: '#EF4444', bg: '#FEF2F2' },
-    ];
-  }, [snap]);
+  const customerCompanies = [
+    {
+      name: 'ITC Limited',
+      logo: 'ITC',
+      logoBg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+      onboarded: '2024-01-15',
+      status: 'Active',
+      metrics: [
+        { label: 'Distributors', value: '17 / 17', sub: 'Active' },
+        { label: 'Beats', value: '167', sub: 'Assigned beats' },
+        { label: 'Vehicles', value: '327', sub: 'Fleet size' },
+        { label: 'Deliveries', value: '18,275', sub: 'Last 30 days' },
+        { label: 'Revenue', value: '₹8.03 Cr', sub: 'Last 30 days' },
+        { label: 'Avg Time Util.', value: '83.2%', sub: 'Time-based' },
+      ],
+      companyCode: 'ITC',
+    },
+    {
+      name: 'Hindustan Unilever',
+      logo: 'HUL',
+      logoBg: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+      onboarded: '2025-08-03',
+      status: 'Active',
+      metrics: [
+        { label: 'Distributors', value: '3 / 3', sub: 'Active' },
+        { label: 'Beats', value: '34', sub: 'Assigned beats' },
+        { label: 'Vehicles', value: '76', sub: 'Fleet size' },
+        { label: 'Deliveries', value: '4,407', sub: 'Last 30 days' },
+        { label: 'Revenue', value: '₹1.95 Cr', sub: 'Last 30 days' },
+        { label: 'Avg Time Util.', value: '83.0%', sub: 'Time-based' },
+      ],
+      companyCode: 'HUL (Hindustan Unilever)',
+    }
+  ];
 
   return (
     <div className="space-y-4">
-      {/* KPI Row 1 — logistics SKUs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard title="Total Orders"     value={snap.totalOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 12.5, isPositive: true }} subtitle="This week" accentColor="#6366F1" sparkData={[245,312,280,390,420,350,285]} />
-        <KPICard title="Active Trips"     value={Math.round(snap.totalOrders * 0.058).toString()} icon={Truck} trend={{ value: 8.1, isPositive: true }} subtitle="Currently running" accentColor="#0891B2" sparkData={[82,91,88,105,120,118,124]} />
-        <KPICard title="Delivery Success" value={`${((snap.fulfilledOrders / snap.totalOrders) * 100).toFixed(1)}%`} icon={CheckCircle} trend={{ value: 2.3, isPositive: true }} subtitle="Last 7 days" accentColor="#10B981" sparkData={[92,94.5,93,95,94.2,95.1,94.2]} />
-        <KPICard title="Invoice Value"    value={snap.invoiceValue} icon={DollarSign} trend={{ value: 14.2, isPositive: true }} subtitle="This week" accentColor="#059669" sparkData={[22,24,23,26,26,28,28]} />
+      {/* Top 5 KPI Cards Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <KPICard title="Companies" value="2 / 2" icon={Building2} subtitle="Active / Total" accentColor="#6366F1" />
+        <KPICard title="Distributors" value="20 / 20" icon={Building} subtitle="Active / Total" accentColor="#0891B2" />
+        <KPICard title="Deliveries" value="22,682" icon={CheckCircle} trend={{ value: 4.8, isPositive: true }} subtitle="Last 30 days" accentColor="#10B981" sparkData={[680, 712, 790, 890, 920, 850, 942]} />
+        <KPICard title="Network Revenue" value="₹9.97 Cr" icon={DollarSign} trend={{ value: 12.3, isPositive: true }} subtitle="Last 30 days" accentColor="#059669" sparkData={[24,26,25,29,31,28,32]} />
+        <KPICard title="Avg Utilization" value="83.1%" icon={Clock} trend={{ value: 1.5, isPositive: true }} subtitle="Time-based" accentColor="#8B5CF6" />
       </div>
 
-      {/* KPI Row 2 — operations SKUs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard title="Planned vs Live Dist." value="±4.2 km" icon={MapPin} trend={{ value: 3.1, isPositive: false }} subtitle="Avg deviation" accentColor="#7C3AED" />
-        <KPICard title="Vehicle Utilization"   value={`${snap.vehicleUtil}%`} icon={Truck} trend={{ value: 3.4, isPositive: true }} subtitle="Fleet efficiency" accentColor="#8B5CF6" sparkData={[72,78,75,82,85,88,snap.vehicleUtil]} />
-        <KPICard title="Unique Customers"      value={snap.uniqueCustomers.toLocaleString()} icon={Users} trend={{ value: 7.8, isPositive: true }} subtitle="Active this month" accentColor="#F59E0B" />
-        <KPICard title="Delayed Deliveries"    value={Math.round(snap.totalOrders * 0.032).toString()} icon={AlertTriangle} trend={{ value: 5.2, isPositive: false }} subtitle="Exceeding SLA" accentColor="#EF4444" />
-      </div>
-
-      {/* SKU metric strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard title="Time Utilization %"     value={`${snap.timeUtil}%`} icon={Clock} trend={{ value: 2.1, isPositive: true }} subtitle="This week" accentColor="#0891B2" />
-        <KPICard title="Delivery Point Util. %" value={`${snap.dpUtil}%`}   icon={Zap}   trend={{ value: 1.8, isPositive: true }} subtitle="This week" accentColor="#10B981" />
-        <KPICard title="Returned : Cancelled"   value={`${snap.returnedOrders}:${snap.cancelledOrders}`} icon={Package} subtitle="This week" accentColor="#FB923C" />
-        <KPICard title="Avg Run Time"           value={snap.avgRunTime} icon={Clock} trend={{ value: 0.4, isPositive: false }} subtitle="Per trip" accentColor="#6366F1" />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Order Trend */}
-        <div className="lg:col-span-2 bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-slate-800 text-sm font-semibold">Order Volume Trend</div>
-              <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Orders vs Deliveries — last 7 days</div>
-            </div>
-            <div className="flex items-center gap-3" style={{ fontSize: '11px', color: '#94A3B8' }}>
-              <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-indigo-500 rounded" /> Orders</span>
-              <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-emerald-500 rounded" /> Delivered</span>
-              <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-amber-400 rounded" /> Returned</span>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <ComposedChart id="sa-order-area" data={STATIC_ORDER_TREND}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 11 }} />
-              <Area type="monotone" dataKey="orders"    stroke="#6366F1" strokeWidth={2} fill="#6366F1" fillOpacity={0.12} name="Orders"    dot={false} isAnimationActive={false} />
-              <Area type="monotone" dataKey="delivered" stroke="#10B981" strokeWidth={2} fill="#10B981" fillOpacity={0.10} name="Delivered" dot={false} isAnimationActive={false} />
-              <Line  type="monotone" dataKey="returned"  stroke="#F59E0B" strokeWidth={1.5} dot={false} name="Returned" isAnimationActive={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
+      {/* Customer Companies Section */}
+      <div>
+        <div className="flex flex-col mb-3.5 mt-2">
+          <h2 className="text-slate-800 text-sm font-semibold">Customer Companies</h2>
+          <p className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Onboarded client companies and operational distribution metrics</p>
         </div>
-
-        {/* Order Status Donut */}
-        <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-          <div className="text-slate-800 text-sm font-semibold mb-0.5">Order Status</div>
-          <div className="text-slate-400 mb-3" style={{ fontSize: '11px' }}>Today's distribution</div>
-          <ResponsiveContainer width="100%" height={145}>
-            <PieChart id="sa-delivery-pie">
-              <Pie data={deliveryStatus} cx="50%" cy="50%" innerRadius={44} outerRadius={64} dataKey="value" strokeWidth={2} stroke="white" isAnimationActive={false}>
-                {deliveryStatus.map(e => <Cell key={`sa-cell-${e.name}`} fill={e.color} />)}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-1">
-            {deliveryStatus.map(s => (
-              <div key={s.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                  <span className="text-slate-500" style={{ fontSize: '11px' }}>{s.name}</span>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {customerCompanies.map(company => (
+            <div key={company.name} className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ border: '1px solid #E2E8F0' }}>
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-inner" style={{ background: company.logoBg }}>
+                    {company.logo}
+                  </div>
+                  <div>
+                    <h3 className="text-slate-800 text-sm font-bold leading-none">{company.name}</h3>
+                    <span className="text-slate-400 inline-block mt-1" style={{ fontSize: '10px' }}>Onboarded: {company.onboarded}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-700 font-medium" style={{ fontSize: '11px' }}>{s.value}</span>
-                  <span className="text-slate-400" style={{ fontSize: '10px' }}>({((s.value / totalDeliveries) * 100).toFixed(0)}%)</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="text-emerald-700 font-bold" style={{ fontSize: '9px' }}>{company.status}</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* Delivery Aging SKU summary */}
-      <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="text-slate-800 text-sm font-semibold mb-0.5">Delivery Aging Overview</div>
-        <div className="text-slate-400 mb-4" style={{ fontSize: '11px' }}>Platform-wide D0–D4+ aging summary</div>
-        <div className="grid grid-cols-5 gap-3">
-          {agingCounts.map(d => (
-            <div key={d.label} className="rounded-xl p-4 text-center" style={{ background: d.bg }}>
-              <div className="font-bold" style={{ fontSize: '1.5rem', color: d.color }}>{d.value}</div>
-              <div className="font-semibold mt-0.5" style={{ fontSize: '12px', color: d.color }}>{d.label}</div>
-              <div className="text-slate-400 mt-0.5" style={{ fontSize: '10px' }}>orders</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent Alerts */}
-      <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-slate-800 text-sm font-semibold">Recent Alerts</div>
-            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Operational exceptions</div>
-          </div>
-          <span className="text-indigo-600 cursor-pointer hover:underline" style={{ fontSize: '11px' }}>View all →</span>
-        </div>
-        <div className="space-y-2.5">
-          {recentAlerts.map(a => (
-            <div key={a.id} className="flex items-start gap-3 p-3 rounded-lg" style={{ background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-              <div className="w-2 h-2 rounded-full mt-1 flex-shrink-0" style={{ background: a.severity === 'high' ? '#EF4444' : '#F59E0B' }} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-slate-700 font-medium" style={{ fontSize: '11px' }}>{a.type}</span>
-                  <span className="text-slate-400 flex-shrink-0 ml-2" style={{ fontSize: '10px' }}>{a.time}</span>
-                </div>
-                <p className="text-slate-500 leading-snug" style={{ fontSize: '11px' }}>{a.message}</p>
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-3 gap-y-4 gap-x-2 py-4">
+                {company.metrics.map(metric => (
+                  <div key={metric.label}>
+                    <div className="text-slate-400 font-semibold uppercase tracking-wider" style={{ fontSize: '9px' }}>{metric.label}</div>
+                    <div className="text-slate-700 font-extrabold mt-0.5" style={{ fontSize: '13px' }}>{metric.value}</div>
+                    <div className="text-slate-400" style={{ fontSize: '10px' }}>{metric.sub}</div>
+                  </div>
+                ))}
               </div>
+
+              {/* Actions Footer */}
+              <div className="pt-3 flex justify-end gap-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
+                <button
+                  onClick={() => {
+                    setActiveDistributorListCompany(
+                      activeDistributorListCompany === company.companyCode ? null : company.companyCode
+                    );
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                >
+                  View Distributors
+                </button>
+              </div>
+
+              {activeDistributorListCompany === company.companyCode && (
+                <div className="mt-3 rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-700 font-semibold text-xs">Distributors for {company.name}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(companyDistributors[company.companyCode] ?? []).map(code => (
+                      <div
+                        key={code}
+                        className="rounded-md px-2 py-1 text-slate-600 text-xs"
+                        style={{ background: '#FFFFFF', border: '1px solid #E2E8F0' }}
+                      >
+                        {code}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -245,12 +254,33 @@ function CompanyAdminDashboard({ filters }: { filters: GlobalFilters }) {
         <KPICard title="Delivery Rate"    value={`${((snap.fulfilledOrders / snap.totalOrders) * 100).toFixed(1)}%`} icon={CheckCircle} trend={{ value: 2.3, isPositive: true }} subtitle="Platform-wide" accentColor="#10B981" sparkData={[92,94.5,93,95,94.2,95.1,94.2]} />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard title="Return Rate"       value={`${snap.returnRate}%`} icon={Package}       trend={{ value: 0.8, isPositive: false }} subtitle="This week"         accentColor="#FB923C" />
-        <KPICard title="Avg Vehicles Used" value={snap.avgVehicles}      icon={Truck}         trend={{ value: 3.4, isPositive: true }}  subtitle={`${snap.vehicleUtil}% utilization`} accentColor="#6366F1" sparkData={[82,91,88,94,96,78,92]} />
-        <KPICard title="Delivery Cost"     value={`₹${(snap.invoiceValueNum * 0.087).toFixed(1)}L`} icon={DollarSign} trend={{ value: 2.1, isPositive: false }} subtitle="Logistics cost" accentColor="#D97706" />
-        <KPICard title="Anomalies"         value="5"                     icon={AlertTriangle} trend={{ value: 2, isPositive: false }}   subtitle="Open incidents"    accentColor="#EF4444" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <KPICard title="Return Rate"   value={`${snap.returnRate}%`} icon={Package}       trend={{ value: 0.8, isPositive: false }} subtitle="This week"      accentColor="#FB923C" />
+        <KPICard title="Delivery Cost" value={`₹${(snap.invoiceValueNum * 0.087).toFixed(1)}L`} icon={DollarSign} trend={{ value: 2.1, isPositive: false }} subtitle="Logistics cost" accentColor="#D97706" />
+        <KPICard title="Anomalies"     value="5"                     icon={AlertTriangle} trend={{ value: 2, isPositive: false }}   subtitle="Open incidents" accentColor="#EF4444" />
       </div>
+
+      {/* Fleet Utilization Gauges — compact inline strip */}
+      <div className="flex">
+        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0', maxWidth: 460, width: '100%' }}>
+          <div className="text-slate-800 text-sm font-semibold mb-0.5">Fleet Utilization</div>
+          <div className="text-slate-400 mb-3" style={{ fontSize: '11px' }}>Vehicle · time · delivery point efficiency against targets</div>
+          <div className="grid grid-cols-3 gap-2">
+            {UTIL_METRICS.map(u => (
+              <div key={u.name} className="flex flex-col items-center gap-0.5">
+                <GaugeChart value={snap[u.key]} color={u.color} target={u.target} />
+                <span className="text-slate-600 text-center font-medium" style={{ fontSize: '11px' }}>{u.name}</span>
+                {u.key === 'vehicleUtil' && (
+                  <span className="text-slate-500 font-bold" style={{ fontSize: '10.5px', marginTop: '1px' }}>
+                    {snap.avgVehicles} vehicles
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
 
       {/* Invoice & Orders Weekly Trend */}
       <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
@@ -425,7 +455,23 @@ function CompanyAdminDashboard({ filters }: { filters: GlobalFilters }) {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
-export default function DashboardOverview({ role, filters }: { role: Role; filters: GlobalFilters }) {
-  if (role === 'company_admin') return <CompanyAdminDashboard filters={filters} />;
-  return <SuperAdminDashboard filters={filters} />;
+export default function DashboardOverview({
+  role,
+  filters,
+  onFiltersChange,
+  onViewChange,
+}: {
+  role: Role;
+  filters: GlobalFilters;
+  onFiltersChange: (f: GlobalFilters) => void;
+  onViewChange: (v: string) => void;
+}) {
+  if (role === 'super_admin') {
+    return (
+      <SuperAdminDashboard
+        filters={filters}
+      />
+    );
+  }
+  return <CompanyAdminDashboard filters={filters} />;
 }

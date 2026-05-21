@@ -1,12 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import DashboardOverview from './components/DashboardOverview';
 import DistributorAnalytics from './components/DistributorAnalytics';
 import OrdersManagement from './components/OrdersManagement';
 import TripsMonitoring from './components/TripsMonitoring';
-import AlertsExceptions from './components/AlertsExceptions';
-import UserManagement from './components/UserManagement';
 import ReportsModule from './components/ReportsModule';
 import qwipoLogo from '../imports/image-3.png';
 import { type GlobalFilters, defaultFilters } from './data/filterData';
@@ -15,7 +13,6 @@ export type Role = 'super_admin' | 'company_admin' | 'distributor_admin' | 'bran
 
 const rolesMeta: Array<{ id: Role; name: string; desc: string; tag: string; color: string }> = [
   { id: 'super_admin', name: 'Super Admin', desc: 'Full platform visibility across all distributors & branches', tag: 'SA', color: '#6366F1' },
-  { id: 'company_admin', name: 'Company Admin', desc: 'Company-level analytics across distributor network', tag: 'CA', color: '#7C3AED' },
   { id: 'distributor_admin', name: 'Distributor Admin', desc: 'Full operational access within assigned distributor scope', tag: 'DA', color: '#0891B2' },
   { id: 'branch_manager', name: 'Branch Manager', desc: 'Branch-level trips, deliveries, delays and returns', tag: 'BM', color: '#059669' },
   { id: 'admin_support', name: 'Admin Support', desc: 'Read-only operational interface, no sensitive data', tag: 'AS', color: '#D97706' },
@@ -23,7 +20,7 @@ const rolesMeta: Array<{ id: Role; name: string; desc: string; tag: string; colo
 
 // Each role lands directly on their primary operational view after login
 const roleDefaultView: Record<Role, string> = {
-  super_admin:       'orders',     // lands directly on orders
+  super_admin:       'dashboard',  // companies overview dashboard
   company_admin:     'dashboard',  // company-level analytics overview
   distributor_admin: 'orders',     // distributor's primary concern
   branch_manager:    'trips',      // branch's primary concern
@@ -117,18 +114,38 @@ export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [filters, setFilters] = useState<GlobalFilters>(defaultFilters());
 
+  // Wire global search navigation
+  useEffect(() => {
+    (window as unknown as { __qwipoNavigate?: (v: string) => void }).__qwipoNavigate = setActiveView;
+    return () => { (window as unknown as { __qwipoNavigate?: (v: string) => void }).__qwipoNavigate = undefined; };
+  }, []);
+
   if (!role) return <LoginScreen onLogin={r => { setRole(r); setActiveView(roleDefaultView[r]); }} />;
 
   const renderContent = () => {
     switch (activeView) {
-      case 'dashboard':    return <DashboardOverview role={role} filters={filters} />;
+      case 'dashboard':
+        return (
+          <DashboardOverview
+            role={role}
+            filters={filters}
+            onFiltersChange={setFilters}
+            onViewChange={setActiveView}
+          />
+        );
       case 'orders':       return <OrdersManagement role={role} filters={filters} />;
       case 'distribution': return <DistributorAnalytics role={role} filters={filters} />;
-      case 'trips':        return <TripsMonitoring role={role} />;
-      case 'alerts':       return <AlertsExceptions role={role} />;
+      case 'trips':        return <TripsMonitoring role={role} filters={filters} />;
       case 'reports':      return <ReportsModule role={role} />;
-      case 'users':        return <UserManagement role={role} />;
-      default:             return <DashboardOverview role={role} filters={filters} />;
+      default:
+        return (
+          <DashboardOverview
+            role={role}
+            filters={filters}
+            onFiltersChange={setFilters}
+            onViewChange={setActiveView}
+          />
+        );
     }
   };
 
@@ -140,6 +157,7 @@ export default function App() {
           role={role}
           onRoleChange={r => { setRole(r); setActiveView(roleDefaultView[r]); }}
           activeView={activeView}
+          onViewChange={setActiveView}
           filters={filters}
           onFiltersChange={setFilters}
         />
