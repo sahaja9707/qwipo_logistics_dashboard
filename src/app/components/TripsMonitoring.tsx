@@ -212,108 +212,108 @@ export default function TripsMonitoring({ role, filters }: { role: Role; filters
         </div>
       </div>
 
-      {/* Trips Trend (Full Width) */}
-      <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="text-slate-800 text-sm font-semibold mb-0.5">Trips Trend</div>
-        <div className="text-slate-400 mb-4" style={{ fontSize: '11px' }}>Daily dispatched vs completed</div>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart id="trips-trend-line" data={tripsTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[30, 70]} />
-            <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 11 }} />
-            <Line type="monotone" dataKey="trips" stroke="#CBD5E1" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Dispatched" isAnimationActive={false} />
-            <Line type="monotone" dataKey="completed" stroke="#6366F1" strokeWidth={2} dot={{ fill: '#6366F1', r: 3 }} name="Completed" isAnimationActive={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Runtime Trend — Enhanced visualization */}
-      <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-          <div>
-            <div className="text-slate-800 text-sm font-semibold">Runtime Trend</div>
-            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Average trip runtime vs 4h target — last 8 days · green = on target, red = exceeded</div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {(() => {
-              const overCount  = runtimeTrend.filter(d => d.avgRuntime > d.target).length;
-              const underCount = runtimeTrend.length - overCount;
-              const avgRuntime = (runtimeTrend.reduce((s, d) => s + d.avgRuntime, 0) / runtimeTrend.length).toFixed(2);
-              return (
-                <>
-                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#FEF2F2', color: '#DC2626' }}>
-                    {overCount} day{overCount !== 1 ? 's' : ''} over
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#ECFDF5', color: '#059669' }}>
-                    {underCount} day{underCount !== 1 ? 's' : ''} under
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: '#EEF2FF', color: '#6366F1' }}>
-                    Avg: {avgRuntime}h
-                  </span>
-                </>
-              );
-            })()}
-          </div>
+      {/* Trends Grid — Side by Side for compact view and minimal empty space */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Trips Trend */}
+        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+          <div className="text-slate-800 text-sm font-semibold mb-0.5">Trips Trend</div>
+          <div className="text-slate-400 mb-3" style={{ fontSize: '11px' }}>Daily dispatched vs completed</div>
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart id="trips-trend-line" data={tripsTrend} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[30, 70]} />
+              <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 10, padding: '4px 8px' }} />
+              <Line type="monotone" dataKey="trips" stroke="#CBD5E1" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Dispatched" isAnimationActive={false} />
+              <Line type="monotone" dataKey="completed" stroke="#6366F1" strokeWidth={2} dot={{ fill: '#6366F1', r: 3 }} name="Completed" isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
 
-        <ResponsiveContainer width="100%" height={180}>
-          <ComposedChart id="trips-runtime-area" data={runtimeTrend} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-            <defs>
-              <linearGradient id="runtimeGradientGreen" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10B981" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="#10B981" stopOpacity={0.02} />
-              </linearGradient>
-              <linearGradient id="runtimeGradientRed" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#EF4444" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="#EF4444" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            {/* Shaded "over-target" zone */}
-            <ReferenceArea y1={4.0} y2={5.0} fill="#FEF2F2" fillOpacity={0.4} />
-            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-            <YAxis
-              tick={{ fontSize: 11, fill: '#94A3B8' }}
-              axisLine={false}
-              tickLine={false}
-              domain={[2.5, 5]}
-              tickFormatter={(v: number) => `${v}h`}
-            />
-            <Tooltip
-              contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 11 }}
-              formatter={(v: number, name: string) => {
-                if (name === 'Avg Runtime') {
-                  const isOver = v > 4.0;
-                  return [`${v}h ${isOver ? '⚠ Over target' : '✓ On target'}`, name];
-                }
-                return [`${v}h`, name];
-              }}
-            />
-            {/* Target line */}
-            <Line
-              type="monotone"
-              dataKey="target"
-              stroke="#94A3B8"
-              strokeWidth={1.5}
-              strokeDasharray="5 3"
-              dot={false}
-              name="Target (4h)"
-              isAnimationActive={false}
-            />
-            {/* Avg runtime line without dots */}
-            <Line
-              type="monotone"
-              dataKey="avgRuntime"
-              stroke="#8B5CF6"
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 6, strokeWidth: 2 }}
-              name="Avg Runtime"
-              isAnimationActive={false}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+        {/* Runtime Trend */}
+        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+            <div>
+              <div className="text-slate-800 text-sm font-semibold">Runtime Trend</div>
+              <div className="text-slate-400" style={{ fontSize: '11px' }}>Avg runtime vs 4h target</div>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(() => {
+                const overCount  = runtimeTrend.filter(d => d.avgRuntime > d.target).length;
+                const underCount = runtimeTrend.length - overCount;
+                const avgRuntime = (runtimeTrend.reduce((s, d) => s + d.avgRuntime, 0) / runtimeTrend.length).toFixed(2);
+                return (
+                  <>
+                    <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: '#FEF2F2', color: '#DC2626', fontSize: '9px' }}>
+                      {overCount}d over
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: '#ECFDF5', color: '#059669', fontSize: '9px' }}>
+                      {underCount}d under
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: '#EEF2FF', color: '#6366F1', fontSize: '9px' }}>
+                      Avg: {avgRuntime}h
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={160}>
+            <ComposedChart id="trips-runtime-area" data={runtimeTrend} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+              <defs>
+                <linearGradient id="runtimeGradientGreen" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#10B981" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="runtimeGradientRed" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#EF4444" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#EF4444" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <ReferenceArea y1={4.0} y2={5.0} fill="#FEF2F2" fillOpacity={0.4} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fontSize: 9, fill: '#94A3B8' }}
+                axisLine={false}
+                tickLine={false}
+                domain={[2.5, 5]}
+                tickFormatter={(v: number) => `${v}h`}
+              />
+              <Tooltip
+                contentStyle={{ borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 10, padding: '4px 8px' }}
+                formatter={(v: number, name: string) => {
+                  if (name === 'Avg Runtime') {
+                    const isOver = v > 4.0;
+                    return [`${v}h ${isOver ? '⚠ Over' : '✓ On target'}`, name];
+                  }
+                  return [`${v}h`, name];
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="target"
+                stroke="#94A3B8"
+                strokeWidth={1}
+                strokeDasharray="5 3"
+                dot={false}
+                name="Target (4h)"
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="avgRuntime"
+                stroke="#8B5CF6"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 1.5 }}
+                name="Avg Runtime"
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Anomaly feed — with dropdown filters */}

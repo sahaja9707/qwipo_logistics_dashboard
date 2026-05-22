@@ -6,8 +6,9 @@ import { getFilteredDrivers, getSnapshotForFilters, getFilteredDistributorPerf }
 import { Truck, Users, MapPin, Award, AlertTriangle, ChevronRight, AlertOctagon, Clock, X, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import {
   Bar, ComposedChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
+
 
 const vehicleUsageWeekly = [
   { day: 'Mon', used: 82, planned: 96, efficiency: 85.4 },
@@ -28,6 +29,18 @@ const vehicleUsageMonthly = [
   { week: 'W2 May', used: 93, planned: 96, efficiency: 96.9 },
   { week: 'W3 May', used: 87, planned: 96, efficiency: 90.6 },
 ];
+
+const weeklyReturnTrends = [
+  { week: 'Mar W1', deliveredValue: 7.0, returnedValue: 0.6, returnValuePct: 7.6, totalInvoices: 290, returnedInvoices: 35, deliveredInvoices: 255, returnInvoicePct: 12.2 },
+  { week: 'Mar W2', deliveredValue: 18.0, returnedValue: 1.2, returnValuePct: 6.2, totalInvoices: 700, returnedInvoices: 80, deliveredInvoices: 620, returnInvoicePct: 12.4 },
+  { week: 'Mar W3', deliveredValue: 14.0, returnedValue: 0.8, returnValuePct: 5.1, totalInvoices: 475, returnedInvoices: 45, deliveredInvoices: 430, returnInvoicePct: 10.0 },
+  { week: 'Mar W4', deliveredValue: 33.5, returnedValue: 1.5, returnValuePct: 4.2, totalInvoices: 760, returnedInvoices: 70, deliveredInvoices: 690, returnInvoicePct: 10.2 },
+  { week: 'Apr W1', deliveredValue: 28.0, returnedValue: 0.5, returnValuePct: 1.8, totalInvoices: 525, returnedInvoices: 25, deliveredInvoices: 500, returnInvoicePct: 5.3 },
+  { week: 'Apr W2', deliveredValue: 20.0, returnedValue: 1.5, returnValuePct: 7.7, totalInvoices: 710, returnedInvoices: 90, deliveredInvoices: 620, returnInvoicePct: 14.2 },
+  { week: 'Apr W3', deliveredValue: 15.5, returnedValue: 1.5, returnValuePct: 8.0, totalInvoices: 570, returnedInvoices: 55, deliveredInvoices: 515, returnInvoicePct: 11.1 },
+  { week: 'Apr W4', deliveredValue: 15.5, returnedValue: 0.7, returnValuePct: 4.3, totalInvoices: 422, returnedInvoices: 32, deliveredInvoices: 390, returnInvoicePct: 8.2 },
+];
+
 
 const distributionAnomalies = [
   {
@@ -203,6 +216,63 @@ export default function DistributorAnalytics({ role, filters }: { role: Role; fi
             <div>
               <div className="text-slate-700 font-medium" style={{ fontSize: '11px' }}>Cancelled Returns</div>
               <div className="text-slate-500" style={{ fontSize: '10px' }}>{snap.cancelledReturns} orders · ₹{(snap.cancelledReturns * 1.4).toFixed(0)}K value</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Weekly Return Trends side-by-side charts */}
+        <div className="border-t border-slate-100 pt-4 mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Chart 1: Delivered vs Returned Value */}
+            <div>
+              <div className="text-slate-800 font-semibold mb-1 text-center" style={{ fontSize: '11px' }}>Delivered vs Returned Value %</div>
+              <ResponsiveContainer width="100%" height={140}>
+                <ComposedChart data={weeklyReturnTrends} margin={{ top: 5, right: -5, bottom: 0, left: -25 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[0, 40]} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[0, 10]} tickFormatter={v => `${v.toFixed(0)}%`} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 10, padding: '4px 8px' }}
+                    formatter={(value: any, name: string) => {
+                      if (name === 'returnValuePct') return [`${value}%`, '% Returned Value'];
+                      return [`₹${value}L`, name === 'deliveredValue' ? 'Delivered Value' : 'Returned Value'];
+                    }}
+                  />
+                  <Legend iconSize={8} wrapperStyle={{ fontSize: 9, marginTop: 4 }} />
+                  <Bar yAxisId="left" dataKey="deliveredValue" stackId="val" fill="#6366F1" name="Delivered Value" isAnimationActive={false} />
+                  <Bar yAxisId="left" dataKey="returnedValue" stackId="val" fill="#EF4444" name="Returned Value" isAnimationActive={false} />
+                  <Line yAxisId="right" type="monotone" dataKey="returnValuePct" stroke="#10B981" strokeWidth={1.5} dot={{ fill: '#10B981', r: 2 }} name="% Returned Value" isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Chart 2: Invoice Returns */}
+            <div>
+              <div className="text-slate-800 font-semibold mb-1 text-center" style={{ fontSize: '11px' }}>Invoice Returns %</div>
+              <ResponsiveContainer width="100%" height={140}>
+                <ComposedChart data={weeklyReturnTrends} margin={{ top: 5, right: -5, bottom: 0, left: -25 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[0, 800]} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[0, 20]} tickFormatter={v => `${v.toFixed(0)}%`} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 10, padding: '4px 8px' }}
+                    formatter={(value: any, name: string, props: any) => {
+                      const data = props.payload;
+                      if (!data) return [value, name];
+                      if (name === 'deliveredInvoices') return [data.totalInvoices, 'Total Invoices'];
+                      if (name === 'returnedInvoices') return [data.returnedInvoices, 'Returned Invoices'];
+                      if (name === 'returnInvoicePct') return [`${data.returnInvoicePct}%`, '% Invoice Returned'];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend iconSize={8} wrapperStyle={{ fontSize: 9, marginTop: 4 }} />
+                  <Bar yAxisId="left" dataKey="deliveredInvoices" stackId="inv" fill="#6366F1" name="Total Invoices" isAnimationActive={false} />
+                  <Bar yAxisId="left" dataKey="returnedInvoices" stackId="inv" fill="#EF4444" name="Returned Invoices" isAnimationActive={false} />
+                  <Line yAxisId="right" type="monotone" dataKey="returnInvoicePct" stroke="#10B981" strokeWidth={1.5} dot={{ fill: '#10B981', r: 2 }} name="% Invoice Returned" isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
