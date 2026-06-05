@@ -42,6 +42,7 @@ const UTIL_METRICS = [
 
 interface SuperAdminProps {
   filters: GlobalFilters;
+  onDistributorDrillDown: (code: string) => void;
 }
 
 const companyDistributors: Record<string, string[]> = {
@@ -67,7 +68,7 @@ const companyDistributors: Record<string, string[]> = {
   'HUL (Hindustan Unilever)': ['DIS-HUL-MUM-01', 'DIS-HUL-BAN-02', 'DIS-HUL-DEL-03'],
 };
 
-function SuperAdminDashboard({ filters }: SuperAdminProps) {
+function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProps) {
   const [activeDistributorListCompany, setActiveDistributorListCompany] = useState<string | null>(null);
 
   const customerCompanies = [
@@ -175,13 +176,18 @@ function SuperAdminDashboard({ filters }: SuperAdminProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {(companyDistributors[company.companyCode] ?? []).map(code => (
-                      <div
+                      <button
                         key={code}
-                        className="rounded-md px-2 py-1 text-slate-600 text-xs"
-                        style={{ background: '#FFFFFF', border: '1px solid #E2E8F0' }}
+                        onClick={() => onDistributorDrillDown(code)}
+                        className="rounded-md px-2 py-1 text-slate-600 text-xs text-left transition-all hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 active:scale-[0.98]"
+                        style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+                        title={`View orders for ${code}`}
                       >
-                        {code}
-                      </div>
+                        <span className="flex items-center justify-between gap-1">
+                          <span>{code}</span>
+                          <span style={{ fontSize: '9px', opacity: 0.5 }}>→</span>
+                        </span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -253,10 +259,8 @@ function CompanyAdminDashboard({ filters }: { filters: GlobalFilters }) {
         <KPICard title="Delivery Rate"    value={`${((snap.fulfilledOrders / snap.totalOrders) * 100).toFixed(1)}%`} icon={CheckCircle} trend={{ value: 2.3, isPositive: true }} subtitle="Platform-wide" accentColor="#10B981" sparkData={[92,94.5,93,95,94.2,95.1,94.2]} />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <KPICard title="Return Rate"   value={`${snap.returnRate}%`} icon={Package}       trend={{ value: 0.8, isPositive: false }} subtitle="This week"      accentColor="#FB923C" />
-        <KPICard title="Delivery Cost" value={`₹${(snap.invoiceValueNum * 0.087).toFixed(1)}L`} icon={DollarSign} trend={{ value: 2.1, isPositive: false }} subtitle="Logistics cost" accentColor="#D97706" />
-        <KPICard title="Anomalies"     value="5"                     icon={AlertTriangle} trend={{ value: 2, isPositive: false }}   subtitle="Open incidents" accentColor="#EF4444" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <KPICard title="Return Rate" value={`${snap.returnRate}%`} icon={Package} trend={{ value: 0.8, isPositive: false }} subtitle="This week" accentColor="#FB923C" />
       </div>
 
       {/* Fleet Utilization Gauges — compact inline strip */}
@@ -459,16 +463,19 @@ export default function DashboardOverview({
   filters,
   onFiltersChange,
   onViewChange,
+  onDistributorDrillDown,
 }: {
   role: Role;
   filters: GlobalFilters;
   onFiltersChange: (f: GlobalFilters) => void;
   onViewChange: (v: string) => void;
+  onDistributorDrillDown: (code: string) => void;
 }) {
   if (role === 'super_admin') {
     return (
       <SuperAdminDashboard
         filters={filters}
+        onDistributorDrillDown={onDistributorDrillDown}
       />
     );
   }

@@ -11,32 +11,30 @@ interface SidebarProps {
   role: Role;
 }
 
-const roleConfig: Record<Role, { name: string; color: string; initial: string; scope: string }> = {
-  super_admin:       { name: 'Qwipo Admin',         color: '#6366F1', initial: 'QA', scope: 'All regions' },
-  company_admin:     { name: 'Company Admin',        color: '#7C3AED', initial: 'CA', scope: 'ITC · All distributors' },
-  distributor_admin: { name: 'Company Manager',      color: '#0891B2', initial: 'CM', scope: 'North Distributors' },
-  branch_manager:    { name: 'Distributor Manager',  color: '#059669', initial: 'DM', scope: 'Andheri Branch' },
-  admin_support:     { name: 'Distributor Admin',    color: '#D97706', initial: 'DA', scope: 'North Distributors' },
+const roleConfig: Record<string, { name: string; color: string; initial: string; scope: string }> = {
+  super_admin:       { name: 'Qwipo Admin',       color: '#6366F1', initial: 'QA', scope: 'All companies & regions' },
+  company_admin:     { name: 'Company Admin',     color: '#7C3AED', initial: 'CA', scope: 'ITC · All distributors' },
+  distributor_admin: { name: 'Distributor Admin', color: '#0891B2', initial: 'DA', scope: 'Assigned distributors' },
 };
 
 const menuGroups = [
   {
     label: 'Overview',
     items: [
-      { id: 'dashboard', label: 'Summary', icon: LayoutDashboard, roles: ['super_admin', 'company_admin'] as Role[], badge: null },
+      { id: 'dashboard', label: 'Summary', icon: LayoutDashboard, roles: ['super_admin', 'company_admin'] as string[], badge: null },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { id: 'orders',   label: 'Orders', icon: ShoppingCart, roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: null },
-      { id: 'trips',   label: 'Trips',  icon: Truck,        roles: ['super_admin', 'company_admin', 'distributor_admin', 'branch_manager', 'admin_support'] as Role[], badge: null },
+      { id: 'orders', label: 'Orders', icon: ShoppingCart, roles: ['super_admin', 'company_admin', 'distributor_admin'] as string[], badge: null },
+      { id: 'trips',  label: 'Trips',  icon: Truck,        roles: ['super_admin', 'company_admin', 'distributor_admin'] as string[], badge: null },
     ],
   },
   {
     label: 'Management',
     items: [
-      { id: 'reports', label: 'Reports', icon: FileText, roles: ['super_admin', 'company_admin', 'distributor_admin', 'admin_support'] as Role[], badge: null },
+      { id: 'reports', label: 'Reports', icon: FileText, roles: ['super_admin', 'company_admin', 'distributor_admin'] as string[], badge: null },
     ],
   },
 ];

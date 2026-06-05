@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Bell, ChevronDown, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Filter, Search } from 'lucide-react';
+import { ChevronDown, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Filter, Search } from 'lucide-react';
 import type { Role } from '../App';
-import { type GlobalFilters, COMPANIES, STATE_CITIES, CITY_STATE, ALL_CITIES, getDistributorsForCity, getDistributorsForState, getDistributorsByZone, ALL_DISTRIBUTORS, ALL_DRIVERS } from '../data/filterData';
+import { type GlobalFilters, COMPANIES, STATE_CITIES, CITY_STATE, ALL_CITIES, getDistributorsForState, getDistributorsByZone, ALL_DISTRIBUTORS, ALL_DRIVERS } from '../data/filterData';
 
 interface TopBarProps {
-  role: Role;
-  onRoleChange: (role: Role) => void;
+  role: string;
+  onRoleChange: (role: string) => void;
   activeView: string;
   onViewChange: (view: string) => void;
   filters: GlobalFilters;
@@ -16,24 +16,15 @@ const pageTitles: Record<string, { title: string; sub: string }> = {
   orders:       { title: 'Orders',             sub: 'Order tracking, delivery aging and fulfillment' },
   trips:        { title: 'Trips',              sub: 'Trips, vehicles and driver performance' },
   reports:      { title: 'Reports',            sub: 'Scheduled and on-demand reports' },
-  users:        { title: 'User Management',    sub: 'Manage users, roles and permissions' },
 };
 
-const dashboardTitles: Partial<Record<Role, { title: string; sub: string }>> = {};
-
-const roleMeta: Record<Role, { label: string; color: string; bg: string }> = {
-  super_admin: { label: 'Qwipo Admin', color: '#6366F1', bg: '#EEF2FF' },
-  distributor_admin: { label: 'Company Manager', color: '#0891B2', bg: '#F0F9FF' },
-  branch_manager: { label: 'Distributor Manager', color: '#059669', bg: '#ECFDF5' },
-  admin_support: { label: 'Distributor Admin', color: '#D97706', bg: '#FFFBEB' },
-  company_admin: {
-    label: '',
-    color: '',
-    bg: ''
-  }
+const roleMeta: Record<string, { label: string; color: string; bg: string }> = {
+  super_admin:       { label: 'Qwipo Admin',       color: '#6366F1', bg: '#EEF2FF' },
+  company_admin:     { label: 'Company Admin',     color: '#7C3AED', bg: '#F5F3FF' },
+  distributor_admin: { label: 'Distributor Admin', color: '#0891B2', bg: '#F0F9FF' },
 };
 
-const allRoles: Role[] = ['super_admin', 'distributor_admin', 'branch_manager', 'admin_support'];
+const allRoles: string[] = ['super_admin', 'company_admin', 'distributor_admin'];
 
 // ─── Date Picker (supports single-day and range) ──────────────────────────────
 
@@ -392,10 +383,8 @@ function GlobalSearch({ onSelect }: { onSelect: (item: SearchItem) => void }) {
 
     // 1. Pages / Views (Navigation options)
     items.push(
-      { type: 'Page', label: 'Operations Command Dashboard', sub: 'Main operational metrics, utilization and KPIs', view: 'dashboard' },
       { type: 'Page', label: 'Dashboard', sub: 'Main operational metrics, utilization and KPIs', view: 'dashboard' },
-      { type: 'Page', label: 'Orders Management', sub: 'Order status, delivery aging, returns and anomalies', view: 'orders' },
-      { type: 'Page', label: 'Distribution Analytics', sub: 'Branch performance, driver analysis, distributor comparison', view: 'distribution' },
+      { type: 'Page', label: 'Orders Management', sub: 'Order status, delivery aging, returns and fulfillment', view: 'orders' },
       { type: 'Page', label: 'Trips Monitoring', sub: 'Live trip status, KM tracking, runtime logs and driver leaderboard', view: 'trips' },
       { type: 'Page', label: 'Reports Module', sub: 'Scheduled auto-reports and custom downloads', view: 'reports' }
     );
@@ -406,14 +395,14 @@ function GlobalSearch({ onSelect }: { onSelect: (item: SearchItem) => void }) {
         type: 'Distributor',
         label: d.code,
         sub: `${d.name} · ${d.city}, ${d.state} (${d.zone})`,
-        view: 'distribution',
+        view: 'orders',
         code: d.code,
       });
       items.push({
         type: 'Distributor',
         label: d.name,
         sub: `${d.code} · ${d.city}, ${d.state} (${d.zone})`,
-        view: 'distribution',
+        view: 'orders',
         code: d.code,
       });
     });
@@ -553,9 +542,7 @@ export default function TopBar({ role, onRoleChange, activeView, onViewChange, f
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const page = activeView === 'dashboard'
-    ? (dashboardTitles[role] ?? { title: 'Summary', sub: 'Overview' })
-    : (pageTitles[activeView] ?? { title: 'Summary', sub: 'Overview' });
+  const page = pageTitles[activeView] ?? { title: 'Summary', sub: 'Overview' };
   const meta = roleMeta[role];
 
   const cityOptions = filters.state ? (STATE_CITIES[filters.state] ?? []) : ALL_CITIES;

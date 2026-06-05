@@ -6,24 +6,20 @@ import OrdersManagement from './components/OrdersManagement';
 import TripsMonitoring from './components/TripsMonitoring';
 import ReportsModule from './components/ReportsModule';
 import qwipoLogo from '../imports/image-3.png';
-import { type GlobalFilters, defaultFilters } from './data/filterData';
+import { type GlobalFilters, defaultFilters, ALL_DISTRIBUTORS } from './data/filterData';
 
-export type Role = 'super_admin' | 'company_admin' | 'distributor_admin' | 'branch_manager' | 'admin_support';
+export type Role = 'super_admin' | 'company_admin' | 'distributor_admin';
 
 const rolesMeta: Array<{ id: Role; name: string; desc: string; tag: string; color: string }> = [
-  { id: 'super_admin', name: 'Qwipo Admin', desc: 'Full platform visibility across all distributors & branches', tag: 'QA', color: '#6366F1' },
-  { id: 'distributor_admin', name: 'Company Manager', desc: 'Full operational access within assigned distributor scope', tag: 'CM', color: '#0891B2' },
-  { id: 'branch_manager', name: 'Distributor Manager', desc: 'Distributor-level trips, deliveries, delays and returns', tag: 'DM', color: '#059669' },
-  { id: 'admin_support', name: 'Distributor Admin', desc: 'Read-only operational interface, no sensitive data', tag: 'DA', color: '#D97706' },
+  { id: 'super_admin',       name: 'Qwipo Admin',       desc: 'Full platform visibility across all companies & distributors', tag: 'QA', color: '#6366F1' },
+  { id: 'company_admin',     name: 'Company Admin',     desc: 'Company-level analytics, distributors and performance', tag: 'CA', color: '#7C3AED' },
+  { id: 'distributor_admin', name: 'Distributor Admin', desc: 'Distributor-level orders, trips, deliveries and reports', tag: 'DA', color: '#0891B2' },
 ];
 
-// Each role lands directly on their primary operational view after login
 const roleDefaultView: Record<Role, string> = {
-  super_admin:       'dashboard',  // companies overview dashboard
-  company_admin:     'dashboard',  // company-level analytics overview
-  distributor_admin: 'orders',     // company manager's primary concern
-  branch_manager:    'trips',      // distributor manager's primary concern
-  admin_support:     'reports',    // distributor admin: reports & downloads
+  super_admin:       'dashboard',
+  company_admin:     'dashboard',
+  distributor_admin: 'orders',
 };
 
 function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
@@ -112,14 +108,30 @@ export default function App() {
   const [role, setRole] = useState<Role | null>(null);
   const [activeView, setActiveView] = useState('dashboard');
   const [filters, setFilters] = useState<GlobalFilters>(defaultFilters());
+  // For distributor drill-down from dashboard
+  const [distributorContext, setDistributorContext] = useState<{ code: string; fromDashboard: boolean } | null>(null);
 
-  // Wire global search navigation
   useEffect(() => {
     (window as unknown as { __qwipoNavigate?: (v: string) => void }).__qwipoNavigate = setActiveView;
     return () => { (window as unknown as { __qwipoNavigate?: (v: string) => void }).__qwipoNavigate = undefined; };
   }, []);
 
   if (!role) return <LoginScreen onLogin={r => { setRole(r); setActiveView(roleDefaultView[r]); }} />;
+
+  const handleDistributorDrillDown = (distributorCode: string) => {
+    setDistributorContext({ code: distributorCode, fromDashboard: true });
+    const dist = ALL_DISTRIBUTORS.find((d) => d.code === distributorCode);
+    if (dist) {
+      setFilters(prev => ({ ...prev, state: dist.state, city: dist.city, distributor: dist.code }));
+    }
+    setActiveView('orders');
+  };
+
+  const handleBackToDashboard = () => {
+    setDistributorContext(null);
+    setFilters(prev => ({ ...prev, state: '', city: '', distributor: '' }));
+    setActiveView('dashboard');
+  };
 
   const renderContent = () => {
     switch (activeView) {
@@ -130,9 +142,18 @@ export default function App() {
             filters={filters}
             onFiltersChange={setFilters}
             onViewChange={setActiveView}
+            onDistributorDrillDown={handleDistributorDrillDown}
           />
         );
-      case 'orders':       return <OrdersManagement role={role} filters={filters} />;
+      case 'orders':
+        return (
+          <OrdersManagement
+            role={role}
+            filters={filters}
+            distributorContext={distributorContext}
+            onBackToDashboard={handleBackToDashboard}
+          />
+        );
       case 'trips':        return <TripsMonitoring role={role} filters={filters} />;
       case 'reports':      return <ReportsModule role={role} />;
       default:
@@ -142,6 +163,7 @@ export default function App() {
             filters={filters}
             onFiltersChange={setFilters}
             onViewChange={setActiveView}
+            onDistributorDrillDown={handleDistributorDrillDown}
           />
         );
     }
@@ -149,11 +171,11 @@ export default function App() {
 
   return (
     <div className="size-full flex" style={{ background: '#F1F5F9' }}>
-      <Sidebar activeView={activeView} onViewChange={setActiveView} role={role} />
+      <Sidebar activeView={activeView} onViewChange={v => { setActiveView(v); if (v !== 'orders') setDistributorContext(null); }} role={role} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar
           role={role}
-          onRoleChange={r => { setRole(r); setActiveView(roleDefaultView[r]); }}
+          onRoleChange={r => { setRole(r); setActiveView(roleDefaultView[r]); setDistributorContext(null); }}
           activeView={activeView}
           onViewChange={setActiveView}
           filters={filters}

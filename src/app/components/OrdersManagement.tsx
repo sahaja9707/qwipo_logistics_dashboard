@@ -3,7 +3,7 @@ import KPICard from './KPICard';
 import type { Role } from '../App';
 import type { GlobalFilters } from '../data/filterData';
 import { getSnapshotForFilters, getAgingHeatmapData, getOrderTrend, HIGH_RETURN_CUSTOMERS } from '../data/filterData';
-import { ShoppingCart, DollarSign } from 'lucide-react';
+import { ShoppingCart, DollarSign, ArrowLeft } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ComposedChart, Line, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -19,8 +19,18 @@ function heatColor(value: number, heatMax: number): { bg: string; text: string }
   return { bg: '#EF4444', text: '#fff' };
 }
 
-export default function OrdersManagement({ role, filters }: { role: Role; filters: GlobalFilters }) {
-  const showFinancial = role !== 'admin_support' && role !== 'branch_manager';
+export default function OrdersManagement({
+  role,
+  filters,
+  distributorContext,
+  onBackToDashboard,
+}: {
+  role: Role;
+  filters: GlobalFilters;
+  distributorContext?: { code: string; fromDashboard: boolean } | null;
+  onBackToDashboard?: () => void;
+}) {
+  const showFinancial = role !== 'distributor_admin';
 
   const snap = useMemo(() => getSnapshotForFilters(filters), [filters]);
   const orderTrend = useMemo(() => getOrderTrend(filters), [filters]);
@@ -54,10 +64,28 @@ export default function OrdersManagement({ role, filters }: { role: Role; filter
 
   return (
     <div className="space-y-4">
+      {/* Back button — shown when drilled in from a distributor tile */}
+      {distributorContext?.fromDashboard && onBackToDashboard && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%)', border: '1px solid #C7D2FE' }}>
+          <button
+            onClick={onBackToDashboard}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold transition-all hover:bg-indigo-100 active:scale-95"
+            style={{ background: '#fff', border: '1px solid #A5B4FC', color: '#4F46E5', fontSize: '12px' }}
+          >
+            <ArrowLeft size={13} />
+            Back to Dashboard
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400" style={{ fontSize: '11px' }}>Viewing orders for</span>
+            <span className="font-bold text-indigo-700 rounded-md px-2 py-0.5" style={{ background: '#EEF2FF', fontSize: '12px', fontFamily: 'monospace' }}>{distributorContext.code}</span>
+          </div>
+        </div>
+      )}
+
       {/* KPIs Row 1 */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <KPICard title="Total Orders" value={snap.totalOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 9.4, isPositive: true }} subtitle="This week" accentColor="#6366F1" sparkData={[280, 312, 290, 390, 420, 350, 285]} />
-        <KPICard title="Active Orders" value={snap.pendingOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 5.2, isPositive: true }} subtitle="In progress" accentColor="#0891B2" />
+        <KPICard title="Orders in Progress" value={snap.pendingOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 5.2, isPositive: true }} subtitle="In progress" accentColor="#0891B2" />
         <KPICard title="Delivered Orders" value={snap.fulfilledOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 8.3, isPositive: true }} subtitle={`${((snap.fulfilledOrders / snap.totalOrders) * 100).toFixed(1)}% success`} accentColor="#059669" />
       </div>
 

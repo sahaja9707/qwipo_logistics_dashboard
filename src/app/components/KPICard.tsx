@@ -9,15 +9,16 @@ interface KPICardProps {
   subtitle?: string;
   accentColor?: string;
   sparkData?: number[];
+  className?: string;
 }
 
-export default function KPICard({ title, value, icon: Icon, trend, subtitle, accentColor = '#6366F1', sparkData }: KPICardProps) {
+export default function KPICard({ title, value, icon: Icon, trend, subtitle, accentColor = '#6366F1', sparkData, className = '' }: KPICardProps) {
   const chartData = sparkData ? sparkData.map((v, i) => ({ v, i })) : [];
   const chartId = `kpi-spark-${title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
   return (
     <div
-      className="bg-white rounded-xl p-4 shadow-sm"
+      className={`bg-white rounded-xl p-4 shadow-sm ${className}`}
       style={{
         border: '1px solid #E2E8F0',
         borderLeftWidth: '3px',

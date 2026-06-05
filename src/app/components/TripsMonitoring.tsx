@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import KPICard from './KPICard';
 import type { Role } from '../App';
 import { getFilteredDrivers, getSnapshotForFilters, type GlobalFilters } from '../data/filterData';
-import { Truck, MapPin, DollarSign, Clock, TrendingDown, Award } from 'lucide-react';
+import { MapPin, Clock, TrendingDown, TrendingUp, Award } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,6 +10,16 @@ import {
 } from 'recharts';
 
 const runtimeSpark = [3.8, 4.1, 3.6, 4.4, 3.9, 3.5, 3.2, 3.2].map((v, i) => ({ i, v }));
+
+const stopsWeeklyData = [
+  { day: 'Mon', stops: 3820 },
+  { day: 'Tue', stops: 4105 },
+  { day: 'Wed', stops: 3960 },
+  { day: 'Thu', stops: 4380 },
+  { day: 'Fri', stops: 4218 },
+  { day: 'Sat', stops: 3640 },
+  { day: 'Sun', stops: 2910 },
+];
 
 const tripsTrend = [
   { date: 'May 10', trips: 48, completed: 44 },
@@ -69,7 +79,6 @@ function GaugeChart({ value, color, target }: { value: number; color: string; ta
 }
 
 export default function TripsMonitoring({ role, filters }: { role: Role; filters: GlobalFilters }) {
-  const showDeliveryCost = role !== 'admin_support' && role !== 'branch_manager';
   const [tripsVehicleView, setTripsVehicleView] = useState<'weekly' | 'monthly'>('weekly');
 
   const snap = useMemo(() => getSnapshotForFilters(filters), [filters]);
@@ -158,10 +167,10 @@ export default function TripsMonitoring({ role, filters }: { role: Role; filters
 
       {/* ── VEHICLES SECTION ──────────────────────────────────────────────────── */}
 
-      {/* Fleet Utilization + Delivery Cost side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Fleet Utilization Gauges */}
-        <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+      {/* Fleet Utilization + Total Delivery Stops side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Fleet Utilization Gauges — wider */}
+        <div className="lg:col-span-2 bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
           <div className="text-slate-800 text-sm font-semibold mb-0.5">Fleet Utilization</div>
           <div className="text-slate-400 mb-4" style={{ fontSize: '11px' }}>Vehicle · time · delivery point efficiency against targets</div>
           <div className="grid grid-cols-3 gap-4">
@@ -179,16 +188,49 @@ export default function TripsMonitoring({ role, filters }: { role: Role; filters
           </div>
         </div>
 
-        {/* Right column: Delivery Cost KPI (role-gated) + Total Delivery Stops stacked */}
-        <div className="flex flex-col gap-4">
-          {showDeliveryCost ? (
-            <>
-              <KPICard title="Delivery Cost" value={`₹${(snap.invoiceValueNum * 0.087).toFixed(1)}L`} icon={DollarSign} trend={{ value: 2.1, isPositive: false }} subtitle="Logistics cost this week" accentColor="#D97706" />
-              <KPICard title="Total Delivery Stops" value="4,218" icon={MapPin} trend={{ value: 4.8, isPositive: true }} subtitle="Stops covered today" accentColor="#8B5CF6" />
-            </>
-          ) : (
-            <KPICard title="Total Delivery Stops" value="4,218" icon={MapPin} trend={{ value: 4.8, isPositive: true }} subtitle="Stops covered today" accentColor="#8B5CF6" />
-          )}
+        {/* Total Delivery Stops — custom expanded card with mini chart */}
+        <div className="h-full bg-white rounded-xl shadow-sm flex flex-col" style={{ border: '1px solid #E2E8F0', borderLeftWidth: '3px', borderLeftColor: '#8B5CF6' }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg" style={{ background: '#8B5CF618' }}>
+                <MapPin size={15} style={{ color: '#8B5CF6' }} />
+              </div>
+              <span className="text-slate-500" style={{ fontSize: '11px' }}>Total Delivery Stops</span>
+            </div>
+            <div className="flex items-center gap-0.5 font-medium" style={{ fontSize: '11px', color: '#10B981' }}>
+              <TrendingUp size={11} />
+              4.8%
+            </div>
+          </div>
+
+          {/* Value */}
+          <div className="px-4 pb-3">
+            <div className="text-slate-800 font-bold leading-none mb-1" style={{ fontSize: '1.35rem' }}>4,218</div>
+            <div className="text-slate-400" style={{ fontSize: '10px' }}>Stops covered today</div>
+          </div>
+
+          {/* Mini area chart — fills remaining space */}
+          <div className="flex-1 px-1 pb-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart id="stops-weekly-chart" data={stopsWeeklyData} margin={{ top: 4, right: 8, bottom: 0, left: -28 }}>
+                <defs>
+                  <linearGradient id="stopsGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: '#CBD5E1' }} axisLine={false} tickLine={false} domain={[2000, 5000]} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 10 }}
+                  formatter={(v: number) => [v.toLocaleString(), 'Stops']}
+                />
+                <Area type="monotone" dataKey="stops" stroke="#8B5CF6" strokeWidth={2} fill="url(#stopsGrad)" dot={{ fill: '#8B5CF6', r: 3, strokeWidth: 0 }} activeDot={{ r: 4 }} isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
