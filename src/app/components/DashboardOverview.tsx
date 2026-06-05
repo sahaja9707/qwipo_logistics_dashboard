@@ -6,7 +6,7 @@ import {
   getSnapshotForFilters, getWeeklyTrend, getCategoryData, getFilteredDistributorPerf,
 } from '../data/filterData';
 import {
-  ShoppingCart, CheckCircle, AlertTriangle, Users, Package,
+  ShoppingCart, CheckCircle, Package,
   DollarSign, BarChart2, Clock, Building2, Building
 } from 'lucide-react';
 import {
@@ -112,7 +112,7 @@ function SuperAdminDashboard({ filters }: SuperAdminProps) {
         <KPICard title="Companies" value="2 / 2" icon={Building2} subtitle="Active / Total" accentColor="#6366F1" />
         <KPICard title="Distributors" value="20 / 20" icon={Building} subtitle="Active / Total" accentColor="#0891B2" />
         <KPICard title="Deliveries" value="22,682" icon={CheckCircle} trend={{ value: 4.8, isPositive: true }} subtitle="Last 30 days" accentColor="#10B981" sparkData={[680, 712, 790, 890, 920, 850, 942]} />
-        <KPICard title="Network Revenue" value="₹9.97 Cr" icon={DollarSign} trend={{ value: 12.3, isPositive: true }} subtitle="Last 30 days" accentColor="#059669" sparkData={[24,26,25,29,31,28,32]} />
+        <KPICard title="Invoice Value" value="₹9.97 Cr" icon={DollarSign} trend={{ value: 12.3, isPositive: true }} subtitle="Last 30 days" accentColor="#059669" sparkData={[24,26,25,29,31,28,32]} />
         <KPICard title="Avg Utilization" value="83.1%" icon={Clock} trend={{ value: 1.5, isPositive: true }} subtitle="Time-based" accentColor="#8B5CF6" />
       </div>
 
@@ -247,10 +247,9 @@ function CompanyAdminDashboard({ filters }: { filters: GlobalFilters }) {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <KPICard title="Total Orders"     value={snap.totalOrders.toLocaleString()}   icon={ShoppingCart} trend={{ value: 12.5, isPositive: true }} subtitle="This week" accentColor="#7C3AED" sparkData={[245,312,280,390,420,350,285]} />
         <KPICard title="Invoice Value"    value={snap.invoiceValue}                   icon={DollarSign}   trend={{ value: 14.2, isPositive: true }} subtitle="This week" accentColor="#059669" sparkData={[22,24,23,26,26,28,28]} />
-        <KPICard title="Unique Customers" value={snap.uniqueCustomers.toLocaleString()} icon={Users}      trend={{ value: 7.8, isPositive: true }}  subtitle="Active this month" accentColor="#0891B2" />
         <KPICard title="Delivery Rate"    value={`${((snap.fulfilledOrders / snap.totalOrders) * 100).toFixed(1)}%`} icon={CheckCircle} trend={{ value: 2.3, isPositive: true }} subtitle="Platform-wide" accentColor="#10B981" sparkData={[92,94.5,93,95,94.2,95.1,94.2]} />
       </div>
 

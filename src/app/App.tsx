@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import DashboardOverview from './components/DashboardOverview';
-import DistributorAnalytics from './components/DistributorAnalytics';
 import OrdersManagement from './components/OrdersManagement';
 import TripsMonitoring from './components/TripsMonitoring';
 import ReportsModule from './components/ReportsModule';
@@ -12,19 +11,19 @@ import { type GlobalFilters, defaultFilters } from './data/filterData';
 export type Role = 'super_admin' | 'company_admin' | 'distributor_admin' | 'branch_manager' | 'admin_support';
 
 const rolesMeta: Array<{ id: Role; name: string; desc: string; tag: string; color: string }> = [
-  { id: 'super_admin', name: 'Super Admin', desc: 'Full platform visibility across all distributors & branches', tag: 'SA', color: '#6366F1' },
-  { id: 'distributor_admin', name: 'Distributor Admin', desc: 'Full operational access within assigned distributor scope', tag: 'DA', color: '#0891B2' },
-  { id: 'branch_manager', name: 'Branch Manager', desc: 'Branch-level trips, deliveries, delays and returns', tag: 'BM', color: '#059669' },
-  { id: 'admin_support', name: 'Admin Support', desc: 'Read-only operational interface, no sensitive data', tag: 'AS', color: '#D97706' },
+  { id: 'super_admin', name: 'Qwipo Admin', desc: 'Full platform visibility across all distributors & branches', tag: 'QA', color: '#6366F1' },
+  { id: 'distributor_admin', name: 'Company Manager', desc: 'Full operational access within assigned distributor scope', tag: 'CM', color: '#0891B2' },
+  { id: 'branch_manager', name: 'Distributor Manager', desc: 'Distributor-level trips, deliveries, delays and returns', tag: 'DM', color: '#059669' },
+  { id: 'admin_support', name: 'Distributor Admin', desc: 'Read-only operational interface, no sensitive data', tag: 'DA', color: '#D97706' },
 ];
 
 // Each role lands directly on their primary operational view after login
 const roleDefaultView: Record<Role, string> = {
   super_admin:       'dashboard',  // companies overview dashboard
   company_admin:     'dashboard',  // company-level analytics overview
-  distributor_admin: 'orders',     // distributor's primary concern
-  branch_manager:    'trips',      // branch's primary concern
-  admin_support:     'reports',    // support staff: reports & downloads
+  distributor_admin: 'orders',     // company manager's primary concern
+  branch_manager:    'trips',      // distributor manager's primary concern
+  admin_support:     'reports',    // distributor admin: reports & downloads
 };
 
 function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
@@ -134,7 +133,6 @@ export default function App() {
           />
         );
       case 'orders':       return <OrdersManagement role={role} filters={filters} />;
-      case 'distribution': return <DistributorAnalytics role={role} filters={filters} />;
       case 'trips':        return <TripsMonitoring role={role} filters={filters} />;
       case 'reports':      return <ReportsModule role={role} />;
       default:

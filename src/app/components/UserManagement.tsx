@@ -20,10 +20,10 @@ const scheduledReports = [
 ];
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
-  super_admin: { label: 'Super Admin', color: '#6366F1', bg: '#EEF2FF' },
-  distributor_admin: { label: 'Distributor Admin', color: '#0891B2', bg: '#F0F9FF' },
-  branch_manager: { label: 'Branch Manager', color: '#059669', bg: '#ECFDF5' },
-  admin_support: { label: 'Admin Support', color: '#D97706', bg: '#FFFBEB' },
+  super_admin: { label: 'Qwipo Admin', color: '#6366F1', bg: '#EEF2FF' },
+  distributor_admin: { label: 'Company Manager', color: '#0891B2', bg: '#F0F9FF' },
+  branch_manager: { label: 'Distributor Manager', color: '#059669', bg: '#ECFDF5' },
+  admin_support: { label: 'Distributor Admin', color: '#D97706', bg: '#FFFBEB' },
 };
 
 export default function UserManagement({ role }: { role: Role }) {
@@ -161,7 +161,7 @@ export default function UserManagement({ role }: { role: Role }) {
         </div>
       </div>
 
-      {/* Scheduled Reports — Super Admin only */}
+      {/* Scheduled Reports — Qwipo Admin only */}
       {role === 'super_admin' && (
         <div className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
           <div className="flex items-center justify-between p-5 pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>

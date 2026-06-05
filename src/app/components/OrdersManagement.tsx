@@ -3,79 +3,11 @@ import KPICard from './KPICard';
 import type { Role } from '../App';
 import type { GlobalFilters } from '../data/filterData';
 import { getSnapshotForFilters, getAgingHeatmapData, getOrderTrend, HIGH_RETURN_CUSTOMERS } from '../data/filterData';
-import { ShoppingCart, DollarSign, XCircle, AlertTriangle, Users, TrendingDown, ChevronRight, X, AlertOctagon, Clock, MapPin, TrendingUp, Zap, RefreshCw, RotateCcw, ChevronDown } from 'lucide-react';
+import { ShoppingCart, DollarSign } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ComposedChart, Line, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-
-const anomalies = [
-  {
-    id: 'ANO-0041',
-    title: 'Critical D4+ Aging — DIS-HYD-004',
-    type: 'Delivery Aging',
-    severity: 'critical',
-    distributor: 'DIS-HYD-004',
-    time: '8 min ago',
-    estimatedLoss: '₹2.1L',
-    source: 'Delivery Aging Monitor',
-    operationalImpact: '14 orders stuck at D4+ with no retry scheduled. Customer churn risk high.',
-    recommendedAction: 'Reassign to available driver; escalate to branch manager for priority re-dispatch.',
-    details: 'Orders at DIS-HYD-004 have breached the D4+ aging threshold. Cumulative invoice value at risk: ₹2.1L. Common pattern: morning route cancellations not re-queued.',
-  },
-  {
-    id: 'ANO-0040',
-    title: 'High Return Rate — DIS-MUM-012',
-    type: 'Return Rate',
-    severity: 'high',
-    distributor: 'DIS-MUM-012',
-    time: '23 min ago',
-    estimatedLoss: '₹84K',
-    source: 'Returns Analytics Engine',
-    operationalImpact: 'Return rate at 18.1%, threshold 12%. Repeated offenders identified.',
-    recommendedAction: 'Review delivery attempt logs; schedule driver coaching; enable mandatory photo confirmation.',
-    details: 'Top driver: Vikram Nair with 16.7% returns on 30 delivery attempts this week. Pattern: customer unreachable in evening slots.',
-  },
-  {
-    id: 'ANO-0039',
-    title: 'Cancelled Spike — DIS-BAN-007',
-    type: 'Order Spike',
-    severity: 'medium',
-    distributor: 'DIS-BAN-007',
-    time: '1h 10m ago',
-    estimatedLoss: '₹31K',
-    source: 'Order Status Watchdog',
-    operationalImpact: '9 orders cancelled in morning window vs daily avg of 2. SLA at risk.',
-    recommendedAction: 'Investigate order cancellation reasons; engage customers with rescheduling offer.',
-    details: 'Cancellations concentrated between 9–11 AM. Likely cause: delivery window mismatch with customer availability.',
-  },
-  {
-    id: 'ANO-0038',
-    title: 'Runtime Exceeded — TRP-3847',
-    type: 'Trip Anomaly',
-    severity: 'medium',
-    distributor: 'DIS-KRN-001',
-    time: '2h 30m ago',
-    estimatedLoss: '₹18K',
-    source: 'Trip Monitor',
-    operationalImpact: 'Trip exceeded 6h planned window by 2.4 hrs. Fuel and overtime cost overrun.',
-    recommendedAction: 'Review route optimization; check if detours were authorized; adjust future trip windows.',
-    details: 'Route: Kompally → Secunderabad. Cause: unplanned road diversion and 3 failed delivery attempts causing backtracking.',
-  },
-  {
-    id: 'ANO-0037',
-    title: 'SIM Tamper Alert — MH-04-T-3312',
-    type: 'Security',
-    severity: 'critical',
-    distributor: 'DIS-CHN-003',
-    time: '3h 05m ago',
-    estimatedLoss: '₹0 (flagged)',
-    source: 'Vehicle Telemetry',
-    operationalImpact: 'Vehicle halted mid-trip. 8 deliveries pending. Customer SLA breach imminent.',
-    recommendedAction: 'Halt vehicle; dispatch supervisor; transfer pending load to backup vehicle.',
-    details: 'SIM card swap detected on vehicle TS-09-T-3312 during active trip. GPS signal briefly lost. Incident reported to compliance team.',
-  },
-];
 
 function heatColor(value: number, heatMax: number): { bg: string; text: string } {
   const ratio = value / (heatMax || 1);
@@ -86,72 +18,6 @@ function heatColor(value: number, heatMax: number): { bg: string; text: string }
   if (ratio < 0.82) return { bg: '#FECACA', text: '#7F1D1D' };
   return { bg: '#EF4444', text: '#fff' };
 }
-
-const severityConfig = {
-  critical: { color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', label: 'Critical', dot: '#EF4444' },
-  high:     { color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', label: 'High',     dot: '#F59E0B' },
-  medium:   { color: '#0891B2', bg: '#F0F9FF', border: '#BAE6FD', label: 'Medium',   dot: '#38BDF8' },
-};
-
-type Anomaly = typeof anomalies[0];
-
-function AnomalyDetailPanel({ anomaly, onClose }: { anomaly: Anomaly; onClose: () => void }) {
-  const sc = severityConfig[anomaly.severity as keyof typeof severityConfig];
-  return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: `1.5px solid ${sc.border}` }}>
-      <div className="flex items-center justify-between px-5 py-3" style={{ background: sc.bg, borderBottom: `1px solid ${sc.border}` }}>
-        <div className="flex items-center gap-2.5">
-          <AlertOctagon size={15} style={{ color: sc.color }} />
-          <span className="font-semibold" style={{ fontSize: '13px', color: sc.color }}>{anomaly.title}</span>
-          <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: sc.color, color: '#fff' }}>{sc.label}</span>
-        </div>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/60 text-slate-400 transition-colors"><X size={15} /></button>
-      </div>
-
-      <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Left: key details */}
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { icon: MapPin, label: 'Distributor', value: anomaly.distributor },
-              { icon: Clock,  label: 'Detected',    value: anomaly.time },
-            ].map(item => (
-              <div key={item.label} className="rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <item.icon size={11} style={{ color: '#94A3B8' }} />
-                  <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</span>
-                </div>
-                <div className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{item.value}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <AlertTriangle size={11} style={{ color: '#D97706' }} />
-              <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operational Impact</span>
-            </div>
-            <p className="text-slate-600 leading-relaxed" style={{ fontSize: '12px' }}>{anomaly.operationalImpact}</p>
-          </div>
-        </div>
-
-        {/* Right: recommended action only */}
-        <div className="space-y-3">
-          <div className="rounded-lg p-3" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <ChevronRight size={11} style={{ color: '#059669' }} />
-              <span style={{ fontSize: '10px', color: '#059669', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recommended Action</span>
-            </div>
-            <p className="text-emerald-800 leading-relaxed" style={{ fontSize: '12px' }}>{anomaly.recommendedAction}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const ANOMALY_TYPE_OPTIONS = ['All Types', 'Delivery Aging', 'Return Rate', 'Order Spike', 'Trip Anomaly', 'Security'];
-const ANOMALY_SEV_OPTIONS  = ['All Severity', 'critical', 'high', 'medium'];
 
 export default function OrdersManagement({ role, filters }: { role: Role; filters: GlobalFilters }) {
   const showFinancial = role !== 'admin_support' && role !== 'branch_manager';
@@ -173,81 +39,80 @@ export default function OrdersManagement({ role, filters }: { role: Role; filter
   const allHeatValues = heatRows.flatMap(r => Object.values(r.values));
   const heatMax = Math.max(...allHeatValues, 1);
 
-  // Anomaly filters (dropdown-style like trips page)
-  const [anomalyTypeFilter, setAnomalyTypeFilter] = useState('All Types');
-  const [anomalySevFilter,  setAnomalySevFilter]  = useState('All Severity');
-  const [typeDropOpen, setTypeDropOpen] = useState(false);
-  const [sevDropOpen,  setSevDropOpen]  = useState(false);
-
-  const filteredAnomalies = useMemo(() => {
-    let result = filters.distributor
-      ? anomalies.filter(a => a.distributor === filters.distributor)
-      : anomalies;
-    if (anomalyTypeFilter !== 'All Types')    result = result.filter(a => a.type === anomalyTypeFilter);
-    if (anomalySevFilter  !== 'All Severity') result = result.filter(a => a.severity === anomalySevFilter);
-    return result;
-  }, [filters.distributor, anomalyTypeFilter, anomalySevFilter]);
-
-  const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
-
   // Trend domain helpers
   const maxOrders   = Math.max(...orderTrend.map(d => d.orders),   1);
   const maxPrice    = Math.max(...orderTrend.map(d => d.totalPrice),1);
   const trendMinO   = Math.max(0, Math.round(Math.min(...orderTrend.map(d => d.orders))   * 0.85));
   const trendMinP   = Math.max(0, Math.round(Math.min(...orderTrend.map(d => d.totalPrice)) * 0.85 * 10) / 10);
 
-  // Returned sub-cards
-  const retDeliveryRetry = Math.round(snap.returnedOrders * 0.35);
-  const retCancelled     = snap.returnedOrders - retDeliveryRetry;
-
-  // High-return customers filtered & sorted
-  const highReturnCustomers = useMemo(() => {
+  // Retailer return data (neutral, no flagging)
+  const retailerReturnData = useMemo(() => {
     let result = [...HIGH_RETURN_CUSTOMERS];
     if (filters.distributor) result = result.filter(c => c.distributor === filters.distributor);
     return result.sort((a, b) => b.returnCount - a.returnCount);
   }, [filters.distributor]);
 
-  const highRiskCount = highReturnCustomers.filter(c => c.riskLevel === 'high').length;
-  const totalReturnValue = highReturnCustomers.reduce((sum, c) => {
-    const num = parseFloat(c.returnValue.replace(/[₹,]/g, ''));
-    return sum + (isNaN(num) ? 0 : num);
-  }, 0);
-
   return (
     <div className="space-y-4">
       {/* KPIs Row 1 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <KPICard title="Total Orders" value={snap.totalOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 9.4, isPositive: true }} subtitle="This week" accentColor="#6366F1" sparkData={[280, 312, 290, 390, 420, 350, 285]} />
         <KPICard title="Active Orders" value={snap.pendingOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 5.2, isPositive: true }} subtitle="In progress" accentColor="#0891B2" />
         <KPICard title="Delivered Orders" value={snap.fulfilledOrders.toLocaleString()} icon={ShoppingCart} trend={{ value: 8.3, isPositive: true }} subtitle={`${((snap.fulfilledOrders / snap.totalOrders) * 100).toFixed(1)}% success`} accentColor="#059669" />
-        {role !== 'distributor_admin' && (
-          <KPICard title="Delayed Orders" value={Math.round(snap.totalOrders * 0.032).toString()} icon={AlertTriangle} trend={{ value: 5.2, isPositive: false }} subtitle="Exceeding SLA" accentColor="#EF4444" />
-        )}
       </div>
 
-      {/* KPIs Row 2 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Returned : Delivery Retry */}
-        <KPICard
-          title="Returned : Delivery Retry"
-          value={retDeliveryRetry.toString()}
-          icon={RefreshCw}
-          trend={{ value: 2.1, isPositive: false }}
-          subtitle={`${((retDeliveryRetry / snap.totalOrders) * 100).toFixed(1)}% of orders`}
-          accentColor="#F59E0B"
-        />
-        {/* Returned : Cancelled */}
-        <KPICard
-          title="Returned : Cancelled"
-          value={retCancelled.toString()}
-          icon={RotateCcw}
-          trend={{ value: 1.4, isPositive: false }}
-          subtitle={`${((retCancelled / snap.totalOrders) * 100).toFixed(1)}% of orders`}
-          accentColor="#DC2626"
-        />
-        {showFinancial && <KPICard title="Invoice Value" value={snap.invoiceValue} icon={DollarSign} trend={{ value: 14.2, isPositive: true }} subtitle="This week" accentColor="#059669" />}
-        <KPICard title="Unique Customers" value={snap.uniqueCustomers.toLocaleString()} icon={Users} trend={{ value: 7.8, isPositive: true }} subtitle="Active this month" accentColor="#0891B2" />
-      </div>
+      {/* KPIs Row 2 — Invoice Value + Sales vs Digital */}
+      {showFinancial && (() => {
+        const salesVal   = Math.round(snap.totalOrders * 0.715);
+        const digitalVal = snap.totalOrders - salesVal;
+        const salesPct   = Number(((salesVal / snap.totalOrders) * 100).toFixed(0));
+        const digitalPct = 100 - salesPct;
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {/* Invoice Value */}
+            <KPICard title="Invoice Value" value={snap.invoiceValue} icon={DollarSign} trend={{ value: 14.2, isPositive: true }} subtitle="This week" accentColor="#059669" />
+
+            {/* Sales vs Digital */}
+            <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-slate-700 font-semibold" style={{ fontSize: '12px' }}>Sales vs Digital</div>
+                  <div className="text-slate-400" style={{ fontSize: '10px' }}>Order type split this week</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                {/* Sales stat */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#4F46E5' }} />
+                  <div>
+                    <div className="font-extrabold text-slate-800" style={{ fontSize: '1.1rem', lineHeight: 1 }}>{salesVal.toLocaleString()}</div>
+                    <div style={{ fontSize: '9px', color: '#4F46E5', fontWeight: 600, marginTop: 2 }}>Sales · {salesPct}%</div>
+                  </div>
+                </div>
+                {/* Segmented bar */}
+                <div className="flex-1">
+                  <div className="w-full rounded-full overflow-hidden flex" style={{ height: 8, background: '#F1F5F9' }}>
+                    <div className="h-full rounded-l-full" style={{ width: `${salesPct}%`, background: 'linear-gradient(to right, #4F46E5, #7C3AED)' }} />
+                    <div className="h-full rounded-r-full flex-1" style={{ background: 'linear-gradient(to right, #0EA5E9, #38BDF8)' }} />
+                  </div>
+                  <div className="flex justify-between mt-1" style={{ fontSize: '9px', color: '#94A3B8' }}>
+                    <span>{salesPct}%</span>
+                    <span>{digitalPct}%</span>
+                  </div>
+                </div>
+                {/* Digital stat */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#0EA5E9' }} />
+                  <div>
+                    <div className="font-extrabold text-slate-800" style={{ fontSize: '1.1rem', lineHeight: 1 }}>{digitalVal.toLocaleString()}</div>
+                    <div style={{ fontSize: '9px', color: '#0EA5E9', fontWeight: 600, marginTop: 2 }}>Digital · {digitalPct}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Heatmap */}
       <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
@@ -266,7 +131,6 @@ export default function OrdersManagement({ role, filters }: { role: Role; filter
           </div>
         </div>
 
-        {/* Scrollable container with smooth scrolling */}
         <div
           className="overflow-x-auto"
           style={{
@@ -373,7 +237,7 @@ export default function OrdersManagement({ role, filters }: { role: Role; filter
           </ResponsiveContainer>
         </div>
 
-        {/* Order Status Donut — read-only, no drilldown */}
+        {/* Order Status Donut */}
         <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col" style={{ border: '1px solid #E2E8F0' }}>
           <div className="text-slate-800 text-sm font-semibold mb-0.5">Order Status Distribution</div>
           <div className="text-slate-400 mb-1" style={{ fontSize: '11px' }}>Today's breakdown</div>
@@ -414,220 +278,26 @@ export default function OrdersManagement({ role, filters }: { role: Role; filter
         </div>
       </div>
 
-      {/* Orders Contribution by Type — compact inline strip */}
-      {(() => {
-        const salesVal   = Math.round(snap.totalOrders * 0.715);
-        const digitalVal = snap.totalOrders - salesVal;
-        const salesPct   = ((salesVal / snap.totalOrders) * 100).toFixed(0);
-        const digitalPct = ((digitalVal / snap.totalOrders) * 100).toFixed(0);
-        return (
-          <div className="flex">
-            <div
-              className="bg-white rounded-xl shadow-sm flex items-center gap-4 px-5"
-              style={{ border: '1px solid #E2E8F0', height: 68, maxWidth: 460 }}
-            >
-              {/* Title */}
-              <div className="flex-shrink-0">
-                <div className="text-slate-700 font-semibold" style={{ fontSize: '11px' }}>Orders by Type</div>
-                <div className="text-slate-400" style={{ fontSize: '9px' }}>Sales vs Digital</div>
-              </div>
 
-              {/* Sales */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <div className="w-2 h-2 rounded-full" style={{ background: '#4F46E5' }} />
-                <div>
-                  <div className="font-bold text-slate-800" style={{ fontSize: '13px' }}>{salesVal.toLocaleString()}</div>
-                  <div style={{ fontSize: '9px', color: '#4F46E5', fontWeight: 600 }}>Sales · {salesPct}%</div>
-                </div>
-              </div>
-
-              {/* Segmented bar — fixed width */}
-              <div style={{ width: 140, flexShrink: 0 }}>
-                <div className="w-full rounded-full overflow-hidden flex" style={{ height: 7, background: '#F1F5F9', gap: 1 }}>
-                  <div
-                    className="h-full rounded-l-full"
-                    style={{ width: `${salesPct}%`, background: 'linear-gradient(to right, #4F46E5, #7C3AED)' }}
-                  />
-                  <div
-                    className="h-full rounded-r-full flex-1"
-                    style={{ background: 'linear-gradient(to right, #0EA5E9, #38BDF8)' }}
-                  />
-                </div>
-              </div>
-
-              {/* Digital */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <div className="w-2 h-2 rounded-full" style={{ background: '#0EA5E9' }} />
-                <div>
-                  <div className="font-bold text-slate-800" style={{ fontSize: '13px' }}>{digitalVal.toLocaleString()}</div>
-                  <div style={{ fontSize: '9px', color: '#0EA5E9', fontWeight: 600 }}>Digital · {digitalPct}%</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Anomalies — with dropdown filter */}
+      {/* Retailer Performance Overview — with Orders by Type embedded in header */}
       <div className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="flex items-center justify-between p-5 pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
-          <div>
-            <div className="text-slate-800 text-sm font-semibold">Anomalies</div>
-            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Click any anomaly to view full insights and recommended actions</div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Type dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => { setTypeDropOpen(o => !o); setSevDropOpen(false); }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all"
-                style={{
-                  border: `1px solid ${anomalyTypeFilter !== 'All Types' ? '#6366F1' : '#E2E8F0'}`,
-                  fontSize: '11px',
-                  color: anomalyTypeFilter !== 'All Types' ? '#4F46E5' : '#64748B',
-                  background: anomalyTypeFilter !== 'All Types' ? '#F5F3FF' : '#fff',
-                }}
-              >
-                {anomalyTypeFilter}
-                <ChevronDown size={10} />
-              </button>
-              {typeDropOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setTypeDropOpen(false)} />
-                  <div className="absolute right-0 top-9 bg-white rounded-xl shadow-xl z-50 overflow-hidden" style={{ border: '1px solid #E2E8F0', minWidth: 160 }}>
-                    {ANOMALY_TYPE_OPTIONS.map(opt => (
-                      <div
-                        key={opt}
-                        className="px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors"
-                        style={{ fontSize: '12px', color: opt === anomalyTypeFilter ? '#4F46E5' : '#374151', background: opt === anomalyTypeFilter ? '#EEF2FF' : 'transparent' }}
-                        onClick={() => { setAnomalyTypeFilter(opt); setTypeDropOpen(false); }}
-                      >
-                        {opt === anomalyTypeFilter && <span className="mr-1.5" style={{ color: '#6366F1' }}>✓</span>}{opt}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Severity dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => { setSevDropOpen(o => !o); setTypeDropOpen(false); }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all"
-                style={{
-                  border: `1px solid ${anomalySevFilter !== 'All Severity' ? '#6366F1' : '#E2E8F0'}`,
-                  fontSize: '11px',
-                  color: anomalySevFilter !== 'All Severity' ? '#4F46E5' : '#64748B',
-                  background: anomalySevFilter !== 'All Severity' ? '#F5F3FF' : '#fff',
-                }}
-              >
-                {anomalySevFilter === 'All Severity' ? 'Severity' : anomalySevFilter}
-                <ChevronDown size={10} />
-              </button>
-              {sevDropOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setSevDropOpen(false)} />
-                  <div className="absolute right-0 top-9 bg-white rounded-xl shadow-xl z-50 overflow-hidden" style={{ border: '1px solid #E2E8F0', minWidth: 140 }}>
-                    {ANOMALY_SEV_OPTIONS.map(opt => (
-                      <div
-                        key={opt}
-                        className="px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors capitalize"
-                        style={{ fontSize: '12px', color: opt === anomalySevFilter ? '#4F46E5' : '#374151', background: opt === anomalySevFilter ? '#EEF2FF' : 'transparent' }}
-                        onClick={() => { setAnomalySevFilter(opt); setSevDropOpen(false); }}
-                      >
-                        {opt === anomalySevFilter && <span className="mr-1.5" style={{ color: '#6366F1' }}>✓</span>}{opt}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <span
-              className="px-2 py-0.5 rounded-full font-bold"
-              style={{ background: '#FEF2F2', color: '#DC2626', fontSize: '11px' }}
-            >
-              {filteredAnomalies.filter(a => a.severity === 'critical').length} critical
-            </span>
-          </div>
-        </div>
-
-        <div className="divide-y divide-slate-50">
-          {filteredAnomalies.length === 0 && (
-            <div className="px-5 py-8 text-center text-slate-400" style={{ fontSize: '12px' }}>
-              No anomalies match the current filters.
-            </div>
-          )}
-          {filteredAnomalies.map(anomaly => {
-            const sc = severityConfig[anomaly.severity as keyof typeof severityConfig];
-            const isSelected = selectedAnomaly?.id === anomaly.id;
-            return (
-              <div key={anomaly.id}>
-                <button
-                  onClick={() => setSelectedAnomaly(isSelected ? null : anomaly)}
-                  className="w-full flex items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50"
-                  style={{ background: isSelected ? sc.bg : 'transparent' }}
-                >
-                  <div className="relative flex-shrink-0 mt-0.5">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: sc.dot }} />
-                    {anomaly.severity === 'critical' && (
-                      <div
-                        className="absolute inset-0 rounded-full animate-ping"
-                        style={{ background: sc.dot, opacity: 0.4 }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{anomaly.title}</span>
-                      <span className="px-1.5 py-0.5 rounded font-medium flex-shrink-0" style={{ background: sc.bg, color: sc.color, fontSize: '10px', border: `1px solid ${sc.border}` }}>{sc.label}</span>
-                      <span className="px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>{anomaly.type}</span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1" style={{ fontSize: '11px', color: '#94A3B8' }}>
-                      <span>{anomaly.distributor}</span>
-                      <span>·</span>
-                      <span>{anomaly.time}</span>
-                    </div>
-                  </div>
-                  <ChevronRight
-                    size={14}
-                    className="flex-shrink-0 mt-0.5 transition-transform"
-                    style={{ color: '#94A3B8', transform: isSelected ? 'rotate(90deg)' : 'rotate(0deg)' }}
-                  />
-                </button>
-
-                {isSelected && (
-                  <div className="px-5 pb-4">
-                    <AnomalyDetailPanel anomaly={anomaly} onClose={() => setSelectedAnomaly(null)} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* High-Return Customer Flagging */}
-      <div className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="p-5 pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
+        <div className="p-5" style={{ borderBottom: '1px solid #F1F5F9' }}>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-slate-800 text-sm font-semibold">High-Return Customer Flags</div>
-              <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Retailers with abnormal return patterns in last 30 days</div>
+              <div className="text-slate-800 text-sm font-semibold">Retailer Performance Overview</div>
+              <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Return activity by retailer over the last 30 days</div>
             </div>
-            <div
-              className="px-3 py-1 rounded-full font-semibold"
-              style={{ background: '#FEF2F2', color: '#DC2626', fontSize: '11px' }}
-            >
-              {highReturnCustomers.length} retailers flagged · {highRiskCount} high risk
+            <div className="px-3 py-1 rounded-full font-semibold" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '11px' }}>
+              {retailerReturnData.length} retailers
             </div>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full" style={{ minWidth: 900 }}>
+          <table className="w-full" style={{ minWidth: 800 }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                {['Retailer', 'City', 'Distributor', 'Return Count', 'Total Orders', 'Return Rate', 'Return Value', 'Risk Level', 'Pattern'].map(col => (
+                {['Retailer', 'City', 'Distributor', 'Return Count', 'Total Orders', 'Return Rate', 'Return Value'].map(col => (
                   <th
                     key={col}
                     className="text-left px-4 py-3 text-slate-500 font-semibold"
@@ -639,73 +309,37 @@ export default function OrdersManagement({ role, filters }: { role: Role; filter
               </tr>
             </thead>
             <tbody>
-              {highReturnCustomers.map((customer, idx) => {
-                const isHigh = customer.riskLevel === 'high';
-                return (
-                  <tr
-                    key={customer.id}
-                    style={{
-                      background: isHigh ? '#FFF5F5' : idx % 2 === 0 ? '#fff' : '#FAFAFA',
-                      borderBottom: '1px solid #F1F5F9',
-                    }}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{customer.retailerName}</div>
-                      <div className="text-slate-400" style={{ fontSize: '10px' }}>{customer.id}</div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600" style={{ fontSize: '12px' }}>{customer.city}</td>
-                    <td className="px-4 py-3 text-slate-500" style={{ fontSize: '11px' }}>{customer.distributor}</td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold" style={{ fontSize: '13px', color: isHigh ? '#DC2626' : '#D97706' }}>
-                        {customer.returnCount}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 font-medium" style={{ fontSize: '12px' }}>{customer.totalOrders}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="font-bold"
-                        style={{ fontSize: '12px', color: isHigh ? '#DC2626' : '#D97706' }}
-                      >
-                        {customer.returnRate.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 font-medium" style={{ fontSize: '12px' }}>{customer.returnValue}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="px-2.5 py-1 rounded-full font-semibold capitalize"
-                        style={{
-                          fontSize: '10px',
-                          background: isHigh ? '#FEE2E2' : '#FEF3C7',
-                          color: isHigh ? '#DC2626' : '#D97706',
-                          border: `1px solid ${isHigh ? '#FECACA' : '#FDE68A'}`,
-                        }}
-                      >
-                        {customer.riskLevel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500" style={{ fontSize: '11px', maxWidth: 200 }}>{customer.pattern}</td>
-                  </tr>
-                );
-              })}
+              {retailerReturnData.map((customer, idx) => (
+                <tr
+                  key={customer.id}
+                  style={{
+                    background: idx % 2 === 0 ? '#fff' : '#FAFAFA',
+                    borderBottom: '1px solid #F1F5F9',
+                  }}
+                >
+                  <td className="px-4 py-3">
+                    <div className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{customer.retailerName}</div>
+                    <div className="text-slate-400" style={{ fontSize: '10px' }}>{customer.id}</div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600" style={{ fontSize: '12px' }}>{customer.city}</td>
+                  <td className="px-4 py-3 text-slate-500" style={{ fontSize: '11px' }}>{customer.distributor}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-bold" style={{ fontSize: '13px', color: '#475569' }}>
+                      {customer.returnCount}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 font-medium" style={{ fontSize: '12px' }}>{customer.totalOrders}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-bold" style={{ fontSize: '12px', color: '#475569' }}>
+                      {customer.returnRate.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 font-medium" style={{ fontSize: '12px' }}>{customer.returnValue}</td>
+
+                </tr>
+              ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Footer summary */}
-        <div
-          className="px-5 py-3 flex items-center gap-4"
-          style={{ borderTop: '1px solid #F1F5F9', background: '#FAFAFA' }}
-        >
-          <span className="text-slate-500" style={{ fontSize: '11px' }}>
-            Total flagged retailers: <span className="font-semibold text-slate-700">{highReturnCustomers.length}</span>
-          </span>
-          <span className="text-slate-300">|</span>
-          <span className="text-slate-500" style={{ fontSize: '11px' }}>
-            Total return value at risk:{' '}
-            <span className="font-semibold text-slate-700">
-              ₹{totalReturnValue.toLocaleString('en-IN')}
-            </span>
-          </span>
         </div>
       </div>
     </div>

@@ -14,22 +14,23 @@ interface TopBarProps {
 
 const pageTitles: Record<string, { title: string; sub: string }> = {
   orders:       { title: 'Orders',             sub: 'Order tracking, delivery aging and fulfillment' },
-  distribution: { title: 'Distribution',       sub: 'Branch performance and driver analytics' },
-  trips:        { title: 'Trips Monitoring',   sub: 'Live trips, KM tracking and anomalies' },
+  trips:        { title: 'Trips',              sub: 'Trips, vehicles and driver performance' },
   reports:      { title: 'Reports',            sub: 'Scheduled and on-demand reports' },
   users:        { title: 'User Management',    sub: 'Manage users, roles and permissions' },
 };
 
-const dashboardTitles: Partial<Record<Role, { title: string; sub: string }>> = {
-  company_admin: { title: 'Operations Command', sub: 'ITC — aggregated performance across distributor network' },
-};
+const dashboardTitles: Partial<Record<Role, { title: string; sub: string }>> = {};
 
 const roleMeta: Record<Role, { label: string; color: string; bg: string }> = {
-  super_admin:      { label: 'Super Admin',      color: '#6366F1', bg: '#EEF2FF' },
-  company_admin:    { label: 'Company Admin',    color: '#7C3AED', bg: '#F5F3FF' },
-  distributor_admin:{ label: 'Distributor Admin',color: '#0891B2', bg: '#F0F9FF' },
-  branch_manager:   { label: 'Branch Manager',   color: '#059669', bg: '#ECFDF5' },
-  admin_support:    { label: 'Admin Support',    color: '#D97706', bg: '#FFFBEB' },
+  super_admin: { label: 'Qwipo Admin', color: '#6366F1', bg: '#EEF2FF' },
+  distributor_admin: { label: 'Company Manager', color: '#0891B2', bg: '#F0F9FF' },
+  branch_manager: { label: 'Distributor Manager', color: '#059669', bg: '#ECFDF5' },
+  admin_support: { label: 'Distributor Admin', color: '#D97706', bg: '#FFFBEB' },
+  company_admin: {
+    label: '',
+    color: '',
+    bg: ''
+  }
 };
 
 const allRoles: Role[] = ['super_admin', 'distributor_admin', 'branch_manager', 'admin_support'];
@@ -553,8 +554,8 @@ export default function TopBar({ role, onRoleChange, activeView, onViewChange, f
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const page = activeView === 'dashboard'
-    ? (dashboardTitles[role] ?? { title: 'Operations Command', sub: 'Overview' })
-    : (pageTitles[activeView] ?? { title: 'Operations Command', sub: 'Overview' });
+    ? (dashboardTitles[role] ?? { title: 'Summary', sub: 'Overview' })
+    : (pageTitles[activeView] ?? { title: 'Summary', sub: 'Overview' });
   const meta = roleMeta[role];
 
   const cityOptions = filters.state ? (STATE_CITIES[filters.state] ?? []) : ALL_CITIES;
