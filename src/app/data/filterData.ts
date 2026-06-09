@@ -25,7 +25,7 @@ export function defaultFilters(): GlobalFilters {
 
 // ─── Reference data ────────────────────────────────────────────────────────────
 
-export const COMPANIES = ['ITC', 'HUL (Hindustan Unilever)', 'Nestlé', 'Britannia', 'Dabur'];
+export const COMPANIES = ['ITC', 'HUL (Hindustan Unilever)', 'Qwipo 3PL Logistics', 'Nestlé', 'Britannia', 'Dabur'];
 
 export const STATE_CITIES: Record<string, string[]> = {
   'Telangana':   ['Hyderabad', 'Secunderabad', 'Warangal', 'Karimnagar'],
@@ -303,6 +303,14 @@ const COMPANY_SNAPSHOTS: Record<string, CompanySnapshot> = {
     plannedKm: 12980, liveKm: 13450, uniqueCustomers: 1560,
     dispatchValue: 44.6, returnValue: 3.3, netSalesValue: 41.3,
     totalVolumetricWeight: 15380, deliveryRetryReturns: 39, cancelledReturns: 73,
+  },
+  'Qwipo 3PL Logistics': {
+    totalOrders: 2240, fulfilledOrders: 2098, pendingOrders: 112, returnedOrders: 94, cancelledOrders: 36,
+    invoiceValue: '₹44.7L', invoiceValueNum: 44.7, returnRate: 4.2,
+    vehicleUtil: 86, timeUtil: 80, dpUtil: 91, avgVehicles: '68 / 74', avgRunTime: '5h 31m',
+    plannedKm: 13280, liveKm: 13740, uniqueCustomers: 1640,
+    dispatchValue: 47.1, returnValue: 2.4, netSalesValue: 44.7,
+    totalVolumetricWeight: 16820, deliveryRetryReturns: 33, cancelledReturns: 61,
   },
   'Dabur': {
     totalOrders: 1423, fulfilledOrders: 1271, pendingOrders: 108, returnedOrders: 102, cancelledOrders: 51,
@@ -661,3 +669,160 @@ export function getWeeklyTrend(filters: GlobalFilters): WeeklyTrendPoint[] {
     invoiceL: parseFloat((baseInvoice * WEEK_FACTORS[i]).toFixed(1)),
   }));
 }
+
+// ─── Company-Distributor Mappings ─────────────────────────────────────────────
+
+export interface CompanyDistributorMapping {
+  companyId: string;
+  distributorIds: string[];
+}
+
+// Mutable in-session (assignments persist until page reload)
+export const companyDistributorMappings: CompanyDistributorMapping[] = [
+  {
+    companyId: 'ITC',
+    distributorIds: [
+      'DIS-HYD-004', 'DIS-KRN-001', 'DIS-MUM-012', 'DIS-BAN-007', 'DIS-DEL-009',
+      'DIS-PUN-015', 'DIS-AHM-006', 'DIS-CHN-003', 'DIS-HYD-021', 'DIS-MUM-033',
+      'DIS-BAN-044', 'DIS-DEL-052', 'DIS-PUN-060', 'DIS-CHN-071', 'DIS-AHM-082',
+      'DIS-NAG-090', 'DIS-KOL-106',
+    ],
+  },
+  {
+    companyId: 'HUL (Hindustan Unilever)',
+    distributorIds: ['DIS-HUL-MUM-01', 'DIS-HUL-BAN-02', 'DIS-HUL-DEL-03'],
+  },
+  {
+    companyId: 'Qwipo 3PL Logistics',
+    distributorIds: [
+      'DIS-MUM-001', 'DIS-MUM-003', 'DIS-BAN-001', 'DIS-DEL-001', 'DIS-PUN-001',
+    ],
+  },
+];
+
+/** Returns distributor codes already assigned to the given company */
+export function getAssignedDistributorIds(companyId: string): string[] {
+  return companyDistributorMappings.find(m => m.companyId === companyId)?.distributorIds ?? [];
+}
+
+/** Returns distributors from ALL_DISTRIBUTORS not yet assigned to the given company */
+export function getUnassignedDistributors(companyId: string): DistributorInfo[] {
+  const assigned = new Set(getAssignedDistributorIds(companyId));
+  return ALL_DISTRIBUTORS.filter(d => !assigned.has(d.code));
+}
+
+/** Assign additional distributor IDs to a company (mutates the mapping in place) */
+export function assignDistributorsToCompany(companyId: string, newIds: string[]): void {
+  const mapping = companyDistributorMappings.find(m => m.companyId === companyId);
+  if (mapping) {
+    const existing = new Set(mapping.distributorIds);
+    newIds.forEach(id => existing.add(id));
+    mapping.distributorIds = [...existing];
+  } else {
+    companyDistributorMappings.push({ companyId, distributorIds: [...newIds] });
+  }
+}
+
+// ─── Platform Users (mock) ────────────────────────────────────────────────────
+
+export type PlatformUserRole = 'distributor_user' | 'distributor_admin' | 'company_admin';
+
+export interface PlatformUser {
+  id: string;
+  name: string;
+  mobile: string;
+  role: PlatformUserRole;
+  companyId: string;
+  distributorIds: string[];  // 1 for distributor_user, multiple for distributor_admin
+}
+
+export const platformUsers: PlatformUser[] = [
+  {
+    id: 'USR-001', name: 'Rajesh Malhotra', mobile: '9812340001',
+    role: 'distributor_admin', companyId: 'ITC',
+    distributorIds: ['DIS-HYD-004', 'DIS-KRN-001', 'DIS-MUM-012', 'DIS-BAN-007', 'DIS-DEL-009'],
+  },
+  {
+    id: 'USR-002', name: 'Priya Nambiar', mobile: '9712340002',
+    role: 'distributor_user', companyId: 'ITC',
+    distributorIds: ['DIS-HYD-004'],
+  },
+  {
+    id: 'USR-003', name: 'Anil Deshmukh', mobile: '9612340003',
+    role: 'distributor_user', companyId: 'HUL (Hindustan Unilever)',
+    distributorIds: ['DIS-HUL-MUM-01'],
+  },
+  {
+    id: 'USR-004', name: 'Sneha Kaur', mobile: '9512340004',
+    role: 'distributor_admin', companyId: 'HUL (Hindustan Unilever)',
+    distributorIds: ['DIS-HUL-MUM-01', 'DIS-HUL-BAN-02', 'DIS-HUL-DEL-03'],
+  },
+  {
+    id: 'USR-005', name: 'Farhan Qureshi', mobile: '9412340005',
+    role: 'company_admin', companyId: 'ITC',
+    distributorIds: [],
+  },
+  {
+    id: 'USR-006', name: 'Lakshmi Reddy', mobile: '9312340006',
+    role: 'distributor_user', companyId: 'Qwipo 3PL Logistics',
+    distributorIds: ['DIS-MUM-001'],
+  },
+  {
+    id: 'USR-007', name: 'Vikram Joshi', mobile: '9212340007',
+    role: 'distributor_admin', companyId: 'Qwipo 3PL Logistics',
+    distributorIds: ['DIS-MUM-001', 'DIS-MUM-003', 'DIS-BAN-001'],
+  },
+];
+
+// ─── Company Records (mutable, drives Dashboard cards + Settings list) ────────
+
+export interface CompanyRecord {
+  id: string;        // same as companyId used in mappings (full name)
+  name: string;      // display name
+  shortCode: string; // 2–3 char avatar label
+  logoBg: string;    // CSS gradient for the avatar
+  onboarded: string; // YYYY-MM-DD
+  status: 'Active' | 'Inactive';
+}
+
+export const COMPANY_RECORDS: CompanyRecord[] = [
+  {
+    id: 'ITC',
+    name: 'ITC Limited',
+    shortCode: 'ITC',
+    logoBg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+    onboarded: '2024-01-15',
+    status: 'Active',
+  },
+  {
+    id: 'HUL (Hindustan Unilever)',
+    name: 'Hindustan Unilever',
+    shortCode: 'HUL',
+    logoBg: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+    onboarded: '2025-08-03',
+    status: 'Active',
+  },
+  {
+    id: 'Qwipo 3PL Logistics',
+    name: 'Qwipo 3PL Logistics',
+    shortCode: 'Q3L',
+    logoBg: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+    onboarded: '2026-02-10',
+    status: 'Active',
+  },
+];
+
+/**
+ * Add a new company record in-session.
+ * Also registers it in COMPANIES and creates an empty distributor mapping.
+ */
+export function addCompanyRecord(company: CompanyRecord): void {
+  COMPANY_RECORDS.push(company);
+  if (!COMPANIES.includes(company.name)) {
+    COMPANIES.push(company.name);
+  }
+  if (!companyDistributorMappings.find(m => m.companyId === company.id)) {
+    companyDistributorMappings.push({ companyId: company.id, distributorIds: [] });
+  }
+}
+

@@ -4,7 +4,7 @@ import type { Role } from '../App';
 import { getFilteredDrivers, getSnapshotForFilters, type GlobalFilters } from '../data/filterData';
 import { MapPin, Clock, TrendingDown, TrendingUp, Award } from 'lucide-react';
 import {
-  LineChart, Line, BarChart, Bar, Cell,
+  BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, ReferenceLine
 } from 'recharts';
@@ -21,16 +21,7 @@ const stopsWeeklyData = [
   { day: 'Sun', stops: 2910 },
 ];
 
-const tripsTrend = [
-  { date: 'May 10', trips: 48, completed: 44 },
-  { date: 'May 11', trips: 52, completed: 50 },
-  { date: 'May 12', trips: 45, completed: 42 },
-  { date: 'May 13', trips: 58, completed: 55 },
-  { date: 'May 14', trips: 61, completed: 59 },
-  { date: 'May 15', trips: 54, completed: 51 },
-  { date: 'May 16', trips: 49, completed: 47 },
-  { date: 'May 17', trips: 36, completed: 33 },
-];
+
 
 // Trips + avg vehicles used — simple chart (Image 2 replacement)
 const tripsVehicleWeekly = [
@@ -120,21 +111,7 @@ export default function TripsMonitoring({ role, filters }: { role: Role; filters
         ))}
       </div>
 
-      {/* Trips Trend */}
-      <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="text-slate-800 text-sm font-semibold mb-0.5">Trips Trend</div>
-        <div className="text-slate-400 mb-3" style={{ fontSize: '11px' }}>Daily dispatched vs completed</div>
-        <ResponsiveContainer width="100%" height={160}>
-          <LineChart id="trips-trend-line" data={tripsTrend} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: '#94A3B8' }} axisLine={false} tickLine={false} domain={[30, 70]} />
-            <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 10, padding: '4px 8px' }} />
-            <Line type="monotone" dataKey="trips" stroke="#CBD5E1" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Dispatched" isAnimationActive={false} />
-            <Line type="monotone" dataKey="completed" stroke="#6366F1" strokeWidth={2} dot={{ fill: '#6366F1', r: 3 }} name="Completed" isAnimationActive={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+
 
       {/* Avg Runtime — full row */}
       <div className="bg-white rounded-xl p-5 shadow-sm flex flex-col" style={{ border: '1px solid #E2E8F0', borderLeftWidth: 3, borderLeftColor: '#8B5CF6' }}>

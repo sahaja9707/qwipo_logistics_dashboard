@@ -5,10 +5,11 @@ import DashboardOverview from './components/DashboardOverview';
 import OrdersManagement from './components/OrdersManagement';
 import TripsMonitoring from './components/TripsMonitoring';
 import ReportsModule from './components/ReportsModule';
+import SettingsModule from './components/SettingsModule';
 import qwipoLogo from '../imports/image-3.png';
 import { type GlobalFilters, defaultFilters, ALL_DISTRIBUTORS } from './data/filterData';
 
-export type Role = 'super_admin' | 'company_admin' | 'distributor_admin';
+export type Role = 'super_admin' | 'company_admin' | 'distributor_admin' | 'distributor_user';
 
 const rolesMeta: Array<{ id: Role; name: string; desc: string; tag: string; color: string }> = [
   { id: 'super_admin',       name: 'Qwipo Admin',       desc: 'Full platform visibility across all companies & distributors', tag: 'QA', color: '#6366F1' },
@@ -20,6 +21,7 @@ const roleDefaultView: Record<Role, string> = {
   super_admin:       'dashboard',
   company_admin:     'dashboard',
   distributor_admin: 'orders',
+  distributor_user:  'orders',
 };
 
 function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
@@ -98,6 +100,67 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
               </button>
             ))}
           </div>
+
+          {/* SSO Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            <span className="text-slate-500 font-medium" style={{ fontSize: '11px' }}>or</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+          </div>
+
+          {/* SSO Section — Distributor User */}
+          <div className="rounded-xl p-4" style={{ background: 'rgba(8,145,178,0.08)', border: '1px solid rgba(8,145,178,0.22)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(8,145,178,0.25)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+              <span className="text-cyan-300 font-semibold" style={{ fontSize: '12px' }}>Distributor User — SSO Login</span>
+            </div>
+
+            {/* Flow diagram */}
+            <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+              {[
+                { label: 'Main Application', icon: '🏠' },
+                { label: 'Dashboard Option', icon: '📊' },
+                { label: 'Logistics Dashboard', icon: '🚚' },
+              ].map((step, i, arr) => (
+                <>
+                  <div
+                    key={step.label}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <span style={{ fontSize: '11px' }}>{step.icon}</span>
+                    <span className="text-slate-300" style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{step.label}</span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <span className="text-slate-600" style={{ fontSize: '11px' }}>→</span>
+                  )}
+                </>
+              ))}
+            </div>
+
+            <div className="rounded-lg px-3 py-2 mb-3" style={{ background: 'rgba(0,0,0,0.2)' }}>
+              <p className="text-slate-400 leading-relaxed" style={{ fontSize: '10px' }}>
+                Distributor Users authenticate automatically via <span className="text-cyan-400 font-medium">SSO</span>. No manual login or user creation required — access is provisioned by the backend upon company onboarding.
+              </p>
+            </div>
+
+            {/* Simulate button */}
+            <button
+              onClick={() => onLogin('distributor_user')}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ background: 'rgba(8,145,178,0.25)', border: '1px solid rgba(34,211,238,0.35)', color: '#22D3EE', fontSize: '12px' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Simulate SSO Login → Logistics Dashboard
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -156,6 +219,7 @@ export default function App() {
         );
       case 'trips':        return <TripsMonitoring role={role} filters={filters} />;
       case 'reports':      return <ReportsModule role={role} />;
+      case 'settings':     return <SettingsModule />;
       default:
         return (
           <DashboardOverview

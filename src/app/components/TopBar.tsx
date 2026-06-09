@@ -22,9 +22,10 @@ const roleMeta: Record<string, { label: string; color: string; bg: string }> = {
   super_admin:       { label: 'Qwipo Admin',       color: '#6366F1', bg: '#EEF2FF' },
   company_admin:     { label: 'Company Admin',     color: '#7C3AED', bg: '#F5F3FF' },
   distributor_admin: { label: 'Distributor Admin', color: '#0891B2', bg: '#F0F9FF' },
+  distributor_user:  { label: 'Distributor User',  color: '#0E7490', bg: '#ECFEFF' },
 };
 
-const allRoles: string[] = ['super_admin', 'company_admin', 'distributor_admin'];
+const allRoles: string[] = ['super_admin', 'company_admin', 'distributor_admin', 'distributor_user'];
 
 // ─── Date Picker (supports single-day and range) ──────────────────────────────
 
@@ -684,20 +685,56 @@ export default function TopBar({ role, onRoleChange, activeView, onViewChange, f
         </div>
 
         <div className="flex items-center gap-2 flex-wrap flex-1">
-          {role === 'super_admin' && activeView !== 'dashboard' && (
-            <FilterDropdown label="Company" value={filters.company} options={COMPANIES} onChange={v => updateFilter('company', v)} placeholder="Company" />
-          )}
-          
-          {role !== 'branch_manager' && !(role === 'super_admin' && activeView === 'dashboard' && !filters.company) && (
+          {/* distributor_user: fully locked — show read-only chips */}
+          {role === 'distributor_user' ? (
             <>
-              <FilterDropdown label="State" value={filters.state} options={Object.keys(STATE_CITIES)} onChange={v => updateFilter('state', v)} placeholder="State" />
-              <FilterDropdown label="City" value={filters.city} options={cityOptions} onChange={v => updateFilter('city', v)} placeholder="City" />
-              <GroupedDistributorDropdown
-                city={filters.city}
-                state={filters.state}
-                value={filters.distributor}
-                onChange={v => updateFilter('distributor', v)}
-              />
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                style={{ border: '1px solid #CBD5E1', fontSize: '11px', color: '#64748B', background: '#F8FAFC', cursor: 'default' }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span>Company: ITC</span>
+              </div>
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                style={{ border: '1px solid #CBD5E1', fontSize: '11px', color: '#64748B', background: '#F8FAFC', cursor: 'default' }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span style={{ fontFamily: 'monospace' }}>DIS-HYD-004</span>
+                <span className="text-slate-400">· Hyderabad Central</span>
+              </div>
+              <span
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold"
+                style={{ fontSize: '9px', background: 'rgba(8,145,178,0.1)', color: '#0891B2', border: '1px solid rgba(8,145,178,0.25)' }}
+              >
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                SSO — Filters locked
+              </span>
+            </>
+          ) : (
+            <>
+              {role === 'super_admin' && activeView !== 'dashboard' && (
+                <FilterDropdown label="Company" value={filters.company} options={COMPANIES} onChange={v => updateFilter('company', v)} placeholder="Company" />
+              )}
+              
+              {role !== 'branch_manager' && !(role === 'super_admin' && activeView === 'dashboard' && !filters.company) && (
+                <>
+                  <FilterDropdown label="State" value={filters.state} options={Object.keys(STATE_CITIES)} onChange={v => updateFilter('state', v)} placeholder="State" />
+                  <FilterDropdown label="City" value={filters.city} options={cityOptions} onChange={v => updateFilter('city', v)} placeholder="City" />
+                  <GroupedDistributorDropdown
+                    city={filters.city}
+                    state={filters.state}
+                    value={filters.distributor}
+                    onChange={v => updateFilter('distributor', v)}
+                  />
+                </>
+              )}
             </>
           )}
 

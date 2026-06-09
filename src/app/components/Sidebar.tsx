@@ -11,10 +11,11 @@ interface SidebarProps {
   role: Role;
 }
 
-const roleConfig: Record<string, { name: string; color: string; initial: string; scope: string }> = {
+const roleConfig: Record<string, { name: string; color: string; initial: string; scope: string; sso?: boolean }> = {
   super_admin:       { name: 'Qwipo Admin',       color: '#6366F1', initial: 'QA', scope: 'All companies & regions' },
   company_admin:     { name: 'Company Admin',     color: '#7C3AED', initial: 'CA', scope: 'ITC · All distributors' },
   distributor_admin: { name: 'Distributor Admin', color: '#0891B2', initial: 'DA', scope: 'Assigned distributors' },
+  distributor_user:  { name: 'Distributor User',  color: '#0E7490', initial: 'DU', scope: 'DIS-HYD-004 · Locked', sso: true },
 };
 
 const menuGroups = [
@@ -27,14 +28,15 @@ const menuGroups = [
   {
     label: 'Operations',
     items: [
-      { id: 'orders', label: 'Orders', icon: ShoppingCart, roles: ['super_admin', 'company_admin', 'distributor_admin'] as string[], badge: null },
-      { id: 'trips',  label: 'Trips',  icon: Truck,        roles: ['super_admin', 'company_admin', 'distributor_admin'] as string[], badge: null },
+      { id: 'orders', label: 'Orders', icon: ShoppingCart, roles: ['super_admin', 'company_admin', 'distributor_admin', 'distributor_user'] as string[], badge: null },
+      { id: 'trips',  label: 'Trips',  icon: Truck,        roles: ['super_admin', 'company_admin', 'distributor_admin', 'distributor_user'] as string[], badge: null },
     ],
   },
   {
     label: 'Management',
     items: [
-      { id: 'reports', label: 'Reports', icon: FileText, roles: ['super_admin', 'company_admin', 'distributor_admin'] as string[], badge: null },
+      { id: 'reports',  label: 'Reports',  icon: FileText, roles: ['super_admin', 'company_admin', 'distributor_admin', 'distributor_user'] as string[], badge: null },
+      { id: 'settings', label: 'Settings', icon: Settings,  roles: ['super_admin'] as string[],                                                             badge: null },
     ],
   },
 ];
@@ -107,13 +109,6 @@ export default function Sidebar({ activeView, onViewChange, role }: SidebarProps
 
       {/* Bottom */}
       <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-        <button
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg mb-1.5 transition-colors"
-          style={{ color: 'rgba(255,255,255,0.3)' }}
-        >
-          <Settings size={15} />
-          <span style={{ fontSize: '13px' }}>Settings</span>
-        </button>
         <div
           className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
           style={{ background: 'rgba(255,255,255,0.05)' }}
@@ -125,7 +120,17 @@ export default function Sidebar({ activeView, onViewChange, role }: SidebarProps
             {cfg.initial}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-white leading-none truncate" style={{ fontSize: '12px' }}>{cfg.name}</div>
+            <div className="flex items-center gap-1.5">
+              <div className="text-white leading-none truncate" style={{ fontSize: '12px' }}>{cfg.name}</div>
+              {cfg.sso && (
+                <span
+                  className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded font-semibold flex-shrink-0"
+                  style={{ fontSize: '8px', background: 'rgba(8,145,178,0.3)', color: '#22D3EE', border: '1px solid rgba(34,211,238,0.3)' }}
+                >
+                  SSO
+                </span>
+              )}
+            </div>
             <div className="truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>{cfg.scope}</div>
           </div>
           <LogOut size={13} style={{ color: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
