@@ -1,18 +1,13 @@
 import { useMemo, useState } from 'react';
 import KPICard from './KPICard';
-import CreateCompanyModal from './CreateCompanyModal';
 import type { Role } from '../App';
 import type { GlobalFilters } from '../data/filterData';
 import {
   getSnapshotForFilters, getWeeklyTrend, getCategoryData, getFilteredDistributorPerf,
-  companyDistributorMappings, getUnassignedDistributors, assignDistributorsToCompany,
-  ALL_DISTRIBUTORS, COMPANY_RECORDS, addCompanyRecord,
 } from '../data/filterData';
-import type { CompanyDistributorMapping, DistributorInfo, CompanyRecord } from '../data/filterData';
 import {
   ShoppingCart, CheckCircle, Package,
-  DollarSign, BarChart2, Clock, Building2, Building,
-  Plus, Search, X,
+  DollarSign, BarChart2, Clock, Building2, Building
 } from 'lucide-react';
 import {
   ComposedChart, Bar, PieChart, Pie, Cell, Line,
@@ -50,375 +45,157 @@ interface SuperAdminProps {
   onDistributorDrillDown: (code: string) => void;
 }
 
-// ─── Assign Distributor Modal ─────────────────────────────────────────────────
-
-interface AssignDistributorModalProps {
-  companyName: string;
-  companyCode: string;
-  onClose: () => void;
-  onAssigned: () => void;
-}
-
-function AssignDistributorModal({ companyName, companyCode, onClose, onAssigned }: AssignDistributorModalProps) {
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  const available = useMemo(
-    () => getUnassignedDistributors(companyCode),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [companyCode]
-  );
-
-  const filtered = useMemo(
-    () => available.filter(d =>
-      d.code.toLowerCase().includes(search.toLowerCase()) ||
-      d.name.toLowerCase().includes(search.toLowerCase()) ||
-      d.city.toLowerCase().includes(search.toLowerCase())
-    ),
-    [available, search]
-  );
-
-  const toggle = (code: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(code) ? next.delete(code) : next.add(code);
-      return next;
-    });
-  };
-
-  const handleAssign = () => {
-    if (selected.size === 0) return;
-    assignDistributorsToCompany(companyCode, [...selected]);
-    onAssigned();
-    onClose();
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.45)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl flex flex-col"
-        style={{ width: 480, maxHeight: '80vh', border: '1px solid #E2E8F0' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #F1F5F9' }}>
-          <div>
-            <div className="text-slate-800 font-semibold text-sm">Assign Distributor</div>
-            <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Adding to: {companyName}</div>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="px-6 py-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
-          <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-            <Search size={13} style={{ color: '#94A3B8', flexShrink: 0 }} />
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search by code, name or city…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-slate-700 outline-none placeholder-slate-400"
-              style={{ fontSize: '12px' }}
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* List */}
-        <div className="flex-1 overflow-y-auto px-6 py-3 space-y-1.5">
-          {filtered.length === 0 ? (
-            <div className="text-center text-slate-400 py-8" style={{ fontSize: '12px' }}>
-              {available.length === 0
-                ? 'All distributors are already assigned to this company.'
-                : 'No distributors match your search.'}
-            </div>
-          ) : (
-            filtered.map(d => {
-              const checked = selected.has(d.code);
-              return (
-                <label
-                  key={d.code}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors"
-                  style={{
-                    background: checked ? 'rgba(99,102,241,0.06)' : '#FAFAFA',
-                    border: `1px solid ${checked ? '#C7D2FE' : '#F1F5F9'}`,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggle(d.code)}
-                    className="w-4 h-4 rounded accent-indigo-600 cursor-pointer flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-slate-700 font-medium" style={{ fontSize: '12px', fontFamily: 'monospace' }}>{d.code}</div>
-                    <div className="text-slate-400 truncate" style={{ fontSize: '11px' }}>{d.name} · {d.city}</div>
-                  </div>
-                  <span className="text-slate-400 text-xs px-1.5 py-0.5 rounded" style={{ background: '#F1F5F9', fontSize: '10px' }}>{d.state}</span>
-                </label>
-              );
-            })
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid #F1F5F9' }}>
-          <span className="text-slate-400" style={{ fontSize: '11px' }}>
-            {selected.size > 0 ? `${selected.size} distributor${selected.size > 1 ? 's' : ''} selected` : 'None selected'}
-          </span>
-          <div className="flex gap-2.5">
-            <button
-              onClick={onClose}
-              className="px-4 py-1.5 rounded-lg text-slate-600 text-xs font-medium hover:bg-slate-100 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleAssign}
-              disabled={selected.size === 0}
-              className="px-4 py-1.5 rounded-lg text-white text-xs font-semibold transition-all"
-              style={{
-                background: selected.size > 0 ? '#6366F1' : '#CBD5E1',
-                cursor: selected.size > 0 ? 'pointer' : 'not-allowed',
-              }}
-            >
-              Assign
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Super Admin Dashboard ────────────────────────────────────────────────────
+const companyDistributors: Record<string, string[]> = {
+  ITC: [
+    'DIS-HYD-004',
+    'DIS-KRN-001',
+    'DIS-MUM-012',
+    'DIS-BAN-007',
+    'DIS-DEL-009',
+    'DIS-PUN-015',
+    'DIS-AHM-006',
+    'DIS-CHN-003',
+    'DIS-HYD-021',
+    'DIS-MUM-033',
+    'DIS-BAN-044',
+    'DIS-DEL-052',
+    'DIS-PUN-060',
+    'DIS-CHN-071',
+    'DIS-AHM-082',
+    'DIS-NAG-090',
+    'DIS-KOL-106',
+  ],
+  'HUL (Hindustan Unilever)': ['DIS-HUL-MUM-01', 'DIS-HUL-BAN-02', 'DIS-HUL-DEL-03'],
+};
 
 function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProps) {
   const [activeDistributorListCompany, setActiveDistributorListCompany] = useState<string | null>(null);
-  const [assignModalCompany, setAssignModalCompany] = useState<{ name: string; code: string } | null>(null);
-  const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
 
-  // Local copy of mappings so React re-renders on assignment
-  const [mappings, setMappings] = useState<CompanyDistributorMapping[]>(
-    () => companyDistributorMappings.map(m => ({ ...m, distributorIds: [...m.distributorIds] }))
-  );
-
-  // Company cards driven by COMPANY_RECORDS (includes newly added ones)
-  const [companyRecords, setCompanyRecords] = useState<CompanyRecord[]>(() => [...COMPANY_RECORDS]);
-
-  const getCompanyDistributors = (companyCode: string): DistributorInfo[] => {
-    const mapping = mappings.find(m => m.companyId === companyCode);
-    if (!mapping) return [];
-    return mapping.distributorIds
-      .map(id => ALL_DISTRIBUTORS.find(d => d.code === id))
-      .filter((d): d is DistributorInfo => !!d);
-  };
-
-  const handleAssigned = () => {
-    // Sync local state from the mutated module-level array
-    setMappings(companyDistributorMappings.map(m => ({ ...m, distributorIds: [...m.distributorIds] })));
-  };
-
-  const handleCompanyCreated = (company: CompanyRecord) => {
-    addCompanyRecord(company);                  // mutate module-level arrays
-    setCompanyRecords([...COMPANY_RECORDS]);    // re-read to trigger re-render
-    setMappings(companyDistributorMappings.map(m => ({ ...m, distributorIds: [...m.distributorIds] })));
-  };
-
-  const totalDistributors = mappings.reduce((sum, m) => sum + m.distributorIds.length, 0);
-
-  // Static metrics for the 3 original companies; new ones get placeholders
-  const STATIC_METRICS: Record<string, Array<{ label: string; value: string; sub: string }>> = {
-    'ITC': [
-      { label: 'Distributors', value: '17 / 17', sub: 'Active' },
-      { label: 'Beats', value: '167', sub: 'Assigned beats' },
-      { label: 'Vehicles', value: '327', sub: 'Fleet size' },
-      { label: 'Deliveries', value: '18,275', sub: 'Last 30 days' },
-      { label: 'Revenue', value: '₹8.03 Cr', sub: 'Last 30 days' },
-      { label: 'Avg Time Util.', value: '83.2%', sub: 'Time-based' },
-    ],
-    'HUL (Hindustan Unilever)': [
-      { label: 'Distributors', value: '3 / 3', sub: 'Active' },
-      { label: 'Beats', value: '34', sub: 'Assigned beats' },
-      { label: 'Vehicles', value: '76', sub: 'Fleet size' },
-      { label: 'Deliveries', value: '4,407', sub: 'Last 30 days' },
-      { label: 'Revenue', value: '₹1.95 Cr', sub: 'Last 30 days' },
-      { label: 'Avg Time Util.', value: '83.0%', sub: 'Time-based' },
-    ],
-    'Qwipo 3PL Logistics': [
-      { label: 'Distributors', value: '5 / 5', sub: 'Active' },
-      { label: 'Beats', value: '48', sub: 'Assigned beats' },
-      { label: 'Vehicles', value: '92', sub: 'Fleet size' },
-      { label: 'Deliveries', value: '5,812', sub: 'Last 30 days' },
-      { label: 'Revenue', value: '₹2.24 Cr', sub: 'Last 30 days' },
-      { label: 'Avg Time Util.', value: '80.4%', sub: 'Time-based' },
-    ],
-  };
-
-  const PLACEHOLDER_METRICS = [
-    { label: 'Distributors', value: '0 / 0', sub: 'None assigned yet' },
-    { label: 'Beats',        value: '—',     sub: 'Not yet active' },
-    { label: 'Vehicles',     value: '—',     sub: 'Not yet active' },
-    { label: 'Deliveries',   value: '—',     sub: 'Last 30 days' },
-    { label: 'Revenue',      value: '—',     sub: 'Last 30 days' },
-    { label: 'Avg Time Util.', value: '—',   sub: 'Not yet active' },
+  const customerCompanies = [
+    {
+      name: 'ITC Limited',
+      logo: 'ITC',
+      logoBg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+      onboarded: '2024-01-15',
+      status: 'Active',
+      metrics: [
+        { label: 'Distributors', value: '17 / 17', sub: 'Active' },
+        { label: 'Beats', value: '167', sub: 'Assigned beats' },
+        { label: 'Vehicles', value: '327', sub: 'Fleet size' },
+        { label: 'Deliveries', value: '18,275', sub: 'Last 30 days' },
+        { label: 'Revenue', value: '₹8.03 Cr', sub: 'Last 30 days' },
+        { label: 'Avg Time Util.', value: '83.2%', sub: 'Time-based' },
+      ],
+      companyCode: 'ITC',
+    },
+    {
+      name: 'Hindustan Unilever',
+      logo: 'HUL',
+      logoBg: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+      onboarded: '2025-08-03',
+      status: 'Active',
+      metrics: [
+        { label: 'Distributors', value: '3 / 3', sub: 'Active' },
+        { label: 'Beats', value: '34', sub: 'Assigned beats' },
+        { label: 'Vehicles', value: '76', sub: 'Fleet size' },
+        { label: 'Deliveries', value: '4,407', sub: 'Last 30 days' },
+        { label: 'Revenue', value: '₹1.95 Cr', sub: 'Last 30 days' },
+        { label: 'Avg Time Util.', value: '83.0%', sub: 'Time-based' },
+      ],
+      companyCode: 'HUL (Hindustan Unilever)',
+    }
   ];
-
-
-
 
   return (
     <div className="space-y-4">
       {/* Top 5 KPI Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KPICard title="Companies" value={`${companyRecords.length} / ${companyRecords.length}`} icon={Building2} subtitle="Active / Total" accentColor="#6366F1" />
-        <KPICard title="Distributors" value={`${totalDistributors} / ${totalDistributors}`} icon={Building} subtitle="Active / Total" accentColor="#0891B2" />
-        <KPICard title="Deliveries" value="28,494" icon={CheckCircle} trend={{ value: 4.8, isPositive: true }} subtitle="Last 30 days" accentColor="#10B981" sparkData={[680, 712, 790, 890, 920, 850, 942]} />
-        <KPICard title="Invoice Value" value="₹12.21 Cr" icon={DollarSign} trend={{ value: 12.3, isPositive: true }} subtitle="Last 30 days" accentColor="#059669" sparkData={[24,26,25,29,31,28,32]} />
+        <KPICard title="Companies" value="2 / 2" icon={Building2} subtitle="Active / Total" accentColor="#6366F1" />
+        <KPICard title="Distributors" value="20 / 20" icon={Building} subtitle="Active / Total" accentColor="#0891B2" />
+        <KPICard title="Deliveries" value="22,682" icon={CheckCircle} trend={{ value: 4.8, isPositive: true }} subtitle="Last 30 days" accentColor="#10B981" sparkData={[680, 712, 790, 890, 920, 850, 942]} />
+        <KPICard title="Invoice Value" value="₹9.97 Cr" icon={DollarSign} trend={{ value: 12.3, isPositive: true }} subtitle="Last 30 days" accentColor="#059669" sparkData={[24,26,25,29,31,28,32]} />
         <KPICard title="Avg Utilization" value="83.1%" icon={Clock} trend={{ value: 1.5, isPositive: true }} subtitle="Time-based" accentColor="#8B5CF6" />
       </div>
 
       {/* Customer Companies Section */}
       <div>
-        <div className="flex items-center justify-between mb-3.5 mt-2">
-          <div>
-            <h2 className="text-slate-800 text-sm font-semibold">Customer Companies</h2>
-            <p className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Onboarded client companies and operational distribution metrics</p>
-          </div>
-          <button
-            onClick={() => setShowAddCompanyModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-white font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{ background: '#6366F1', fontSize: '12px' }}
-          >
-            <Plus size={13} />
-            Add Company
-          </button>
+        <div className="flex flex-col mb-3.5 mt-2">
+          <h2 className="text-slate-800 text-sm font-semibold">Customer Companies</h2>
+          <p className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Onboarded client companies and operational distribution metrics</p>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {companyRecords.map(cr => {
-            const metrics = STATIC_METRICS[cr.id] ?? PLACEHOLDER_METRICS;
-            const company = { name: cr.name, logo: cr.shortCode, logoBg: cr.logoBg, onboarded: cr.onboarded, status: cr.status, companyCode: cr.id, metrics };
-            const assignedDistributors = getCompanyDistributors(company.companyCode);
-            const isExpanded = activeDistributorListCompany === company.companyCode;
-
-            return (
-              <div key={company.name} className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ border: '1px solid #E2E8F0' }}>
-                {/* Header */}
-                <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-inner" style={{ background: company.logoBg }}>
-                      {company.logo}
-                    </div>
-                    <div>
-                      <h3 className="text-slate-800 text-sm font-bold leading-none">{company.name}</h3>
-                      <span className="text-slate-400 inline-block mt-1" style={{ fontSize: '10px' }}>Onboarded: {company.onboarded}</span>
-                    </div>
+          {customerCompanies.map(company => (
+            <div key={company.name} className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200" style={{ border: '1px solid #E2E8F0' }}>
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-inner" style={{ background: company.logoBg }}>
+                    {company.logo}
                   </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-emerald-700 font-bold" style={{ fontSize: '9px' }}>{company.status}</span>
+                  <div>
+                    <h3 className="text-slate-800 text-sm font-bold leading-none">{company.name}</h3>
+                    <span className="text-slate-400 inline-block mt-1" style={{ fontSize: '10px' }}>Onboarded: {company.onboarded}</span>
                   </div>
                 </div>
-
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-3 gap-y-4 gap-x-2 py-4">
-                  {company.metrics.map(metric => (
-                    <div key={metric.label}>
-                      <div className="text-slate-400 font-semibold uppercase tracking-wider" style={{ fontSize: '9px' }}>{metric.label}</div>
-                      <div className="text-slate-700 font-extrabold mt-0.5" style={{ fontSize: '13px' }}>{metric.value}</div>
-                      <div className="text-slate-400" style={{ fontSize: '10px' }}>{metric.sub}</div>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="text-emerald-700 font-bold" style={{ fontSize: '9px' }}>{company.status}</span>
                 </div>
-
-                {/* Actions Footer */}
-                <div className="pt-3 flex justify-end gap-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
-                  <button
-                    onClick={() => {
-                      setActiveDistributorListCompany(isExpanded ? null : company.companyCode);
-                    }}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                  >
-                    {isExpanded ? 'Hide Distributors' : 'View Distributors'}
-                  </button>
-                </div>
-
-                {/* Distributor Mapping Panel */}
-                {isExpanded && (
-                  <div className="mt-3 rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-slate-700 font-semibold text-xs">Distributors — {company.name}</span>
-                      <button
-                        onClick={() => setAssignModalCompany({ name: company.name, code: company.companyCode })}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-white font-semibold transition-colors"
-                        style={{ background: '#6366F1', fontSize: '10px' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#4F46E5')}
-                        onMouseLeave={e => (e.currentTarget.style.background = '#6366F1')}
-                      >
-                        <Plus size={10} />
-                        Add Distributor
-                      </button>
-                    </div>
-
-                    {assignedDistributors.length === 0 ? (
-                      <div className="text-slate-400 text-center py-3" style={{ fontSize: '11px' }}>
-                        No distributors assigned yet. Click "Add Distributor" to assign.
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {assignedDistributors.map(d => (
-                          <button
-                            key={d.code}
-                            onClick={() => onDistributorDrillDown(d.code)}
-                            className="rounded-md px-2 py-1 text-slate-600 text-xs text-left transition-all hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 active:scale-[0.98]"
-                            style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', cursor: 'pointer' }}
-                            title={`View orders for ${d.code}`}
-                          >
-                            <span className="flex items-center justify-between gap-1">
-                              <span>{d.code}</span>
-                              <span style={{ fontSize: '9px', opacity: 0.5 }}>→</span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
-            );
-          })}
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-3 gap-y-4 gap-x-2 py-4">
+                {company.metrics.map(metric => (
+                  <div key={metric.label}>
+                    <div className="text-slate-400 font-semibold uppercase tracking-wider" style={{ fontSize: '9px' }}>{metric.label}</div>
+                    <div className="text-slate-700 font-extrabold mt-0.5" style={{ fontSize: '13px' }}>{metric.value}</div>
+                    <div className="text-slate-400" style={{ fontSize: '10px' }}>{metric.sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="pt-3 flex justify-end gap-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
+                <button
+                  onClick={() => {
+                    setActiveDistributorListCompany(
+                      activeDistributorListCompany === company.companyCode ? null : company.companyCode
+                    );
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                >
+                  View Distributors
+                </button>
+              </div>
+
+              {activeDistributorListCompany === company.companyCode && (
+                <div className="mt-3 rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-700 font-semibold text-xs">Distributors for {company.name}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(companyDistributors[company.companyCode] ?? []).map(code => (
+                      <button
+                        key={code}
+                        onClick={() => onDistributorDrillDown(code)}
+                        className="rounded-md px-2 py-1 text-slate-600 text-xs text-left transition-all hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 active:scale-[0.98]"
+                        style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+                        title={`View orders for ${code}`}
+                      >
+                        <span className="flex items-center justify-between gap-1">
+                          <span>{code}</span>
+                          <span style={{ fontSize: '9px', opacity: 0.5 }}>→</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Assign Distributor Modal */}
-      {assignModalCompany && (
-        <AssignDistributorModal
-          companyName={assignModalCompany.name}
-          companyCode={assignModalCompany.code}
-          onClose={() => setAssignModalCompany(null)}
-          onAssigned={handleAssigned}
-        />
-      )}
-
-      {/* Add Company Modal */}
-      {showAddCompanyModal && (
-        <CreateCompanyModal
-          onClose={() => setShowAddCompanyModal(false)}
-          onCreated={handleCompanyCreated}
-        />
-      )}
     </div>
   );
 }
