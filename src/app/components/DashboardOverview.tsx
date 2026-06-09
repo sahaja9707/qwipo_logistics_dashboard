@@ -7,37 +7,14 @@ import {
 } from '../data/filterData';
 import {
   ShoppingCart, CheckCircle, Package,
-  DollarSign, BarChart2, Clock, Building2, Building
+  DollarSign, BarChart2, Building2, Building
 } from 'lucide-react';
 import {
   ComposedChart, Bar, PieChart, Pie, Cell, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
-// ─── Shared Gauge component ───────────────────────────────────────────────────
-function GaugeChart({ value, color, target }: { value: number; color: string; target: number }) {
-  const radius = 42;
-  const circumference = Math.PI * radius;
-  const offset = circumference * (1 - value / 100);
-  const isOnTarget = value >= target;
-  return (
-    <svg width="100" height="58" viewBox="0 0 100 58">
-      <path d={`M 8 50 A ${radius} ${radius} 0 0 1 92 50`} fill="none" stroke="#F1F5F9" strokeWidth="10" strokeLinecap="round" />
-      <path d={`M 8 50 A ${radius} ${radius} 0 0 1 92 50`} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
-        strokeDasharray={`${circumference}`} strokeDashoffset={`${offset}`} />
-      <text x="50" y="48" textAnchor="middle" fill="#1E293B" fontSize="15" fontWeight="700">{value}%</text>
-      <text x="50" y="57" textAnchor="middle" fill={isOnTarget ? '#059669' : '#D97706'} fontSize="8">
-        {isOnTarget ? '✓ On target' : `Target: ${target}%`}
-      </text>
-    </svg>
-  );
-}
 
-const UTIL_METRICS = [
-  { name: 'Vehicle Utilization',  color: '#6366F1', target: 90, key: 'vehicleUtil' as const },
-  { name: 'Time Utilization',     color: '#0891B2', target: 85, key: 'timeUtil'    as const },
-  { name: 'Delivery Point Util.', color: '#10B981', target: 90, key: 'dpUtil'      as const },
-];
 
 
 interface SuperAdminProps {
@@ -69,7 +46,6 @@ const companyDistributors: Record<string, string[]> = {
 };
 
 function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProps) {
-  const [activeDistributorListCompany, setActiveDistributorListCompany] = useState<string | null>(null);
 
   const customerCompanies = [
     {
@@ -84,7 +60,6 @@ function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProp
         { label: 'Vehicles', value: '327', sub: 'Fleet size' },
         { label: 'Deliveries', value: '18,275', sub: 'Last 30 days' },
         { label: 'Revenue', value: '₹8.03 Cr', sub: 'Last 30 days' },
-        { label: 'Avg Time Util.', value: '83.2%', sub: 'Time-based' },
       ],
       companyCode: 'ITC',
     },
@@ -100,7 +75,6 @@ function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProp
         { label: 'Vehicles', value: '76', sub: 'Fleet size' },
         { label: 'Deliveries', value: '4,407', sub: 'Last 30 days' },
         { label: 'Revenue', value: '₹1.95 Cr', sub: 'Last 30 days' },
-        { label: 'Avg Time Util.', value: '83.0%', sub: 'Time-based' },
       ],
       companyCode: 'HUL (Hindustan Unilever)',
     }
@@ -109,12 +83,11 @@ function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProp
   return (
     <div className="space-y-4">
       {/* Top 5 KPI Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard title="Companies" value="2 / 2" icon={Building2} subtitle="Active / Total" accentColor="#6366F1" />
         <KPICard title="Distributors" value="20 / 20" icon={Building} subtitle="Active / Total" accentColor="#0891B2" />
         <KPICard title="Deliveries" value="22,682" icon={CheckCircle} trend={{ value: 4.8, isPositive: true }} subtitle="Last 30 days" accentColor="#10B981" sparkData={[680, 712, 790, 890, 920, 850, 942]} />
         <KPICard title="Invoice Value" value="₹9.97 Cr" icon={DollarSign} trend={{ value: 12.3, isPositive: true }} subtitle="Last 30 days" accentColor="#059669" sparkData={[24,26,25,29,31,28,32]} />
-        <KPICard title="Avg Utilization" value="83.1%" icon={Clock} trend={{ value: 1.5, isPositive: true }} subtitle="Time-based" accentColor="#8B5CF6" />
       </div>
 
       {/* Customer Companies Section */}
@@ -155,43 +128,6 @@ function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProp
                 ))}
               </div>
 
-              {/* Actions Footer */}
-              <div className="pt-3 flex justify-end gap-2.5" style={{ borderTop: '1px solid #F1F5F9' }}>
-                <button
-                  onClick={() => {
-                    setActiveDistributorListCompany(
-                      activeDistributorListCompany === company.companyCode ? null : company.companyCode
-                    );
-                  }}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                >
-                  View Distributors
-                </button>
-              </div>
-
-              {activeDistributorListCompany === company.companyCode && (
-                <div className="mt-3 rounded-lg p-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-slate-700 font-semibold text-xs">Distributors for {company.name}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {(companyDistributors[company.companyCode] ?? []).map(code => (
-                      <button
-                        key={code}
-                        onClick={() => onDistributorDrillDown(code)}
-                        className="rounded-md px-2 py-1 text-slate-600 text-xs text-left transition-all hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 active:scale-[0.98]"
-                        style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', cursor: 'pointer' }}
-                        title={`View orders for ${code}`}
-                      >
-                        <span className="flex items-center justify-between gap-1">
-                          <span>{code}</span>
-                          <span style={{ fontSize: '9px', opacity: 0.5 }}>→</span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -263,26 +199,6 @@ function CompanyAdminDashboard({ filters }: { filters: GlobalFilters }) {
         <KPICard title="Return Rate" value={`${snap.returnRate}%`} icon={Package} trend={{ value: 0.8, isPositive: false }} subtitle="This week" accentColor="#FB923C" />
       </div>
 
-      {/* Fleet Utilization Gauges — compact inline strip */}
-      <div className="flex">
-        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #E2E8F0', maxWidth: 460, width: '100%' }}>
-          <div className="text-slate-800 text-sm font-semibold mb-0.5">Fleet Utilization</div>
-          <div className="text-slate-400 mb-3" style={{ fontSize: '11px' }}>Vehicle · time · delivery point efficiency against targets</div>
-          <div className="grid grid-cols-3 gap-2">
-            {UTIL_METRICS.map(u => (
-              <div key={u.name} className="flex flex-col items-center gap-0.5">
-                <GaugeChart value={snap[u.key]} color={u.color} target={u.target} />
-                <span className="text-slate-600 text-center font-medium" style={{ fontSize: '11px' }}>{u.name}</span>
-                {u.key === 'vehicleUtil' && (
-                  <span className="text-slate-500 font-bold" style={{ fontSize: '10.5px', marginTop: '1px' }}>
-                    {snap.avgVehicles} vehicles
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
 
       {/* Invoice & Orders Weekly Trend */}

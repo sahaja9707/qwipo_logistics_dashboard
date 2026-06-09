@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import KPICard from './KPICard';
 import type { Role } from '../App';
 import type { GlobalFilters } from '../data/filterData';
-import { getSnapshotForFilters, getAgingHeatmapData, getOrderTrend, HIGH_RETURN_CUSTOMERS } from '../data/filterData';
+import { getSnapshotForFilters, getAgingHeatmapData, getOrderTrend } from '../data/filterData';
 import { ShoppingCart, DollarSign, ArrowLeft } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ComposedChart, Line, Bar,
@@ -55,12 +55,6 @@ export default function OrdersManagement({
   const trendMinO   = Math.max(0, Math.round(Math.min(...orderTrend.map(d => d.orders))   * 0.85));
   const trendMinP   = Math.max(0, Math.round(Math.min(...orderTrend.map(d => d.totalPrice)) * 0.85 * 10) / 10);
 
-  // Retailer return data (neutral, no flagging)
-  const retailerReturnData = useMemo(() => {
-    let result = [...HIGH_RETURN_CUSTOMERS];
-    if (filters.distributor) result = result.filter(c => c.distributor === filters.distributor);
-    return result.sort((a, b) => b.returnCount - a.returnCount);
-  }, [filters.distributor]);
 
   return (
     <div className="space-y-4">
@@ -307,69 +301,7 @@ export default function OrdersManagement({
       </div>
 
 
-      {/* Retailer Performance Overview — with Orders by Type embedded in header */}
-      <div className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <div className="p-5" style={{ borderBottom: '1px solid #F1F5F9' }}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-slate-800 text-sm font-semibold">Retailer Performance Overview</div>
-              <div className="text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>Return activity by retailer over the last 30 days</div>
-            </div>
-            <div className="px-3 py-1 rounded-full font-semibold" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '11px' }}>
-              {retailerReturnData.length} retailers
-            </div>
-          </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full" style={{ minWidth: 800 }}>
-            <thead>
-              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                {['Retailer', 'City', 'Distributor', 'Return Count', 'Total Orders', 'Return Rate', 'Return Value'].map(col => (
-                  <th
-                    key={col}
-                    className="text-left px-4 py-3 text-slate-500 font-semibold"
-                    style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {retailerReturnData.map((customer, idx) => (
-                <tr
-                  key={customer.id}
-                  style={{
-                    background: idx % 2 === 0 ? '#fff' : '#FAFAFA',
-                    borderBottom: '1px solid #F1F5F9',
-                  }}
-                >
-                  <td className="px-4 py-3">
-                    <div className="text-slate-700 font-medium" style={{ fontSize: '12px' }}>{customer.retailerName}</div>
-                    <div className="text-slate-400" style={{ fontSize: '10px' }}>{customer.id}</div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600" style={{ fontSize: '12px' }}>{customer.city}</td>
-                  <td className="px-4 py-3 text-slate-500" style={{ fontSize: '11px' }}>{customer.distributor}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-bold" style={{ fontSize: '13px', color: '#475569' }}>
-                      {customer.returnCount}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 font-medium" style={{ fontSize: '12px' }}>{customer.totalOrders}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-bold" style={{ fontSize: '12px', color: '#475569' }}>
-                      {customer.returnRate.toFixed(1)}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 font-medium" style={{ fontSize: '12px' }}>{customer.returnValue}</td>
-
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }
