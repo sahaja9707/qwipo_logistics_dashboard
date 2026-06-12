@@ -21,7 +21,7 @@ const menuGroups = [
   {
     label: 'Overview',
     items: [
-      { id: 'dashboard', label: 'Summary', icon: LayoutDashboard, roles: ['super_admin', 'company_admin'] as string[], badge: null },
+      { id: 'dashboard', label: 'Summary', icon: LayoutDashboard, roles: ['super_admin'] as string[], badge: null },
     ],
   },
   {

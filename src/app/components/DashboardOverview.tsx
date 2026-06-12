@@ -108,7 +108,6 @@ function SuperAdminDashboard({ filters, onDistributorDrillDown }: SuperAdminProp
                   </div>
                   <div>
                     <h3 className="text-slate-800 text-sm font-bold leading-none">{company.name}</h3>
-                    <span className="text-slate-400 inline-block mt-1" style={{ fontSize: '10px' }}>Onboarded: {company.onboarded}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>

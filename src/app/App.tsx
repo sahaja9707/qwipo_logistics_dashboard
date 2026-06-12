@@ -18,7 +18,7 @@ const rolesMeta: Array<{ id: Role; name: string; desc: string; tag: string; colo
 
 const roleDefaultView: Record<Role, string> = {
   super_admin:       'dashboard',
-  company_admin:     'dashboard',
+  company_admin:     'orders',
   distributor_admin: 'orders',
 };
 
@@ -136,6 +136,17 @@ export default function App() {
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard':
+        // Summary page is Super Admin only
+        if (role !== 'super_admin') {
+          return (
+            <OrdersManagement
+              role={role}
+              filters={filters}
+              distributorContext={distributorContext}
+              onBackToDashboard={handleBackToDashboard}
+            />
+          );
+        }
         return (
           <DashboardOverview
             role={role}
@@ -158,12 +169,11 @@ export default function App() {
       case 'reports':      return <ReportsModule role={role} />;
       default:
         return (
-          <DashboardOverview
+          <OrdersManagement
             role={role}
             filters={filters}
-            onFiltersChange={setFilters}
-            onViewChange={setActiveView}
-            onDistributorDrillDown={handleDistributorDrillDown}
+            distributorContext={distributorContext}
+            onBackToDashboard={handleBackToDashboard}
           />
         );
     }

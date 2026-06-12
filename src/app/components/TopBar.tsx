@@ -620,8 +620,10 @@ export default function TopBar({ role, onRoleChange, activeView, onViewChange, f
           <div className="text-slate-400 leading-none mt-0.5 truncate" style={{ fontSize: '11px' }}>{page.sub}</div>
         </div>
 
-        {/* Global Search */}
-        <GlobalSearch onSelect={handleSearchSelect} />
+        {/* Global Search — Super Admin & Company Admin only */}
+        {role !== 'distributor_admin' && (
+          <GlobalSearch onSelect={handleSearchSelect} />
+        )}
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Refresh */}
@@ -673,80 +675,126 @@ export default function TopBar({ role, onRoleChange, activeView, onViewChange, f
         className="flex items-center gap-2 px-6 py-2 flex-wrap"
         style={{ background: '#FAFBFC', borderTop: '1px solid #F1F5F9' }}
       >
-        <div className="flex items-center gap-1.5 flex-shrink-0" style={{ fontSize: '11px', color: '#94A3B8' }}>
-          <Filter size={11} />
-          <span className="font-medium">Filters</span>
-          {activeFilterCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full font-bold" style={{ background: '#6366F1', color: '#fff', fontSize: '9px' }}>
-              {activeFilterCount}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap flex-1">
-          {role === 'super_admin' && activeView !== 'dashboard' && (
-            <FilterDropdown label="Company" value={filters.company} options={COMPANIES} onChange={v => updateFilter('company', v)} placeholder="Company" />
-          )}
-          
-          {role !== 'branch_manager' && !(role === 'super_admin' && activeView === 'dashboard' && !filters.company) && (
-            <>
-              <FilterDropdown label="State" value={filters.state} options={Object.keys(STATE_CITIES)} onChange={v => updateFilter('state', v)} placeholder="State" />
-              <FilterDropdown label="City" value={filters.city} options={cityOptions} onChange={v => updateFilter('city', v)} placeholder="City" />
-              <GroupedDistributorDropdown
-                city={filters.city}
-                state={filters.state}
-                value={filters.distributor}
-                onChange={v => updateFilter('distributor', v)}
-              />
-            </>
-          )}
-
-          {/* Date filter */}
-          <div className="relative">
-            <button
-              onClick={() => setShowDatePicker(p => !p)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
-              style={{
-                border: `1px solid ${showDatePicker ? '#6366F1' : '#E2E8F0'}`,
-                fontSize: '11px',
-                color: showDatePicker ? '#4F46E5' : '#64748B',
-                background: showDatePicker ? '#F5F3FF' : '#fff',
-              }}
-            >
-              <Calendar size={11} style={{ color: '#6366F1', flexShrink: 0 }} />
-              <span>{dateLabel}</span>
-              {isSingleDayEffective && (
-                <span className="px-1 rounded text-white" style={{ fontSize: '8px', background: '#6366F1', marginLeft: 2 }}>1D</span>
-              )}
-              <ChevronDown size={10} style={{ flexShrink: 0 }} />
-            </button>
-            <span className="absolute -top-2 left-2 bg-white px-1" style={{ fontSize: '9px', color: '#6366F1', fontWeight: 600, pointerEvents: 'none' }}>
-              {isSingleDayEffective ? 'Single Day' : 'Date Range'}
-            </span>
-            {showDatePicker && (
-              <DatePicker
-                startDate={filters.dateFrom}
-                endDate={filters.dateTo}
-                isSingleDay={isSingleDayEffective}
-                onChange={(s, e, single) => {
-                  onFiltersChange({ ...filters, dateFrom: s, dateTo: e, singleDay: single });
+        {/* Distributor Admin: date filter only */}
+        {role === 'distributor_admin' ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0" style={{ fontSize: '11px', color: '#94A3B8' }}>
+              <Calendar size={11} style={{ color: '#0891B2' }} />
+              <span className="font-medium">Date Range</span>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowDatePicker(p => !p)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                style={{
+                  border: `1px solid ${showDatePicker ? '#0891B2' : '#E2E8F0'}`,
+                  fontSize: '11px',
+                  color: showDatePicker ? '#0891B2' : '#64748B',
+                  background: showDatePicker ? '#F0F9FF' : '#fff',
                 }}
-                onClose={() => setShowDatePicker(false)}
-              />
-            )}
+              >
+                <Calendar size={11} style={{ color: '#0891B2', flexShrink: 0 }} />
+                <span>{dateLabel}</span>
+                {isSingleDayEffective && (
+                  <span className="px-1 rounded text-white" style={{ fontSize: '8px', background: '#0891B2', marginLeft: 2 }}>1D</span>
+                )}
+                <ChevronDown size={10} style={{ flexShrink: 0 }} />
+              </button>
+              <span className="absolute -top-2 left-2 bg-white px-1" style={{ fontSize: '9px', color: '#0891B2', fontWeight: 600, pointerEvents: 'none' }}>
+                {isSingleDayEffective ? 'Single Day' : 'Date Range'}
+              </span>
+              {showDatePicker && (
+                <DatePicker
+                  startDate={filters.dateFrom}
+                  endDate={filters.dateTo}
+                  isSingleDay={isSingleDayEffective}
+                  onChange={(s, e, single) => {
+                    onFiltersChange({ ...filters, dateFrom: s, dateTo: e, singleDay: single });
+                  }}
+                  onClose={() => setShowDatePicker(false)}
+                />
+              )}
+            </div>
           </div>
+        ) : (
+          /* Super Admin & Company Admin: full filter bar */
+          <>
+            <div className="flex items-center gap-1.5 flex-shrink-0" style={{ fontSize: '11px', color: '#94A3B8' }}>
+              <Filter size={11} />
+              <span className="font-medium">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full font-bold" style={{ background: '#6366F1', color: '#fff', fontSize: '9px' }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </div>
 
-          {/* Clear all */}
-          {activeFilterCount > 0 && (
-            <button
-              onClick={() => onFiltersChange({ ...filters, company: '', state: '', city: '', distributor: '' })}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
-              style={{ fontSize: '11px', color: '#EF4444', border: '1px solid #FCA5A5' }}
-            >
-              <X size={10} /> Clear
-            </button>
-          )}
-        </div>
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              {role === 'super_admin' && activeView !== 'dashboard' && (
+                <FilterDropdown label="Company" value={filters.company} options={COMPANIES} onChange={v => updateFilter('company', v)} placeholder="Company" />
+              )}
+
+              {!(role === 'super_admin' && activeView === 'dashboard' && !filters.company) && (
+                <>
+                  <FilterDropdown label="State" value={filters.state} options={Object.keys(STATE_CITIES)} onChange={v => updateFilter('state', v)} placeholder="State" />
+                  <FilterDropdown label="City" value={filters.city} options={cityOptions} onChange={v => updateFilter('city', v)} placeholder="City" />
+                  <GroupedDistributorDropdown
+                    city={filters.city}
+                    state={filters.state}
+                    value={filters.distributor}
+                    onChange={v => updateFilter('distributor', v)}
+                  />
+                </>
+              )}
+
+              {/* Date filter */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowDatePicker(p => !p)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                  style={{
+                    border: `1px solid ${showDatePicker ? '#6366F1' : '#E2E8F0'}`,
+                    fontSize: '11px',
+                    color: showDatePicker ? '#4F46E5' : '#64748B',
+                    background: showDatePicker ? '#F5F3FF' : '#fff',
+                  }}
+                >
+                  <Calendar size={11} style={{ color: '#6366F1', flexShrink: 0 }} />
+                  <span>{dateLabel}</span>
+                  {isSingleDayEffective && (
+                    <span className="px-1 rounded text-white" style={{ fontSize: '8px', background: '#6366F1', marginLeft: 2 }}>1D</span>
+                  )}
+                  <ChevronDown size={10} style={{ flexShrink: 0 }} />
+                </button>
+                <span className="absolute -top-2 left-2 bg-white px-1" style={{ fontSize: '9px', color: '#6366F1', fontWeight: 600, pointerEvents: 'none' }}>
+                  {isSingleDayEffective ? 'Single Day' : 'Date Range'}
+                </span>
+                {showDatePicker && (
+                  <DatePicker
+                    startDate={filters.dateFrom}
+                    endDate={filters.dateTo}
+                    isSingleDay={isSingleDayEffective}
+                    onChange={(s, e, single) => {
+                      onFiltersChange({ ...filters, dateFrom: s, dateTo: e, singleDay: single });
+                    }}
+                    onClose={() => setShowDatePicker(false)}
+                  />
+                )}
+              </div>
+
+              {/* Clear all */}
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => onFiltersChange({ ...filters, company: '', state: '', city: '', distributor: '' })}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                  style={{ fontSize: '11px', color: '#EF4444', border: '1px solid #FCA5A5' }}
+                >
+                  <X size={10} /> Clear
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
